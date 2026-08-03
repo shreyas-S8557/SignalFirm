@@ -7,10 +7,11 @@ export default defineApplication({
   displayName: 'CRM Sync (Scrapegraph)',
   description:
     'Data-plumbing layer for the Scrapegraph -> Twenty integration: custom ' +
-    'objects for research/enrichment jobs and ICP scores, plus a webhook ' +
-    'route the Scrapegraph worker service uses to report job progress. ' +
-    'No AI logic lives in this app -- see the "AI Service Layer" apps that ' +
-    'build on top of these objects in later milestones.',
+    'objects for research/enrichment jobs, ICP scores, and conversation ' +
+    'signals, plus webhook routes and a database-event trigger the worker ' +
+    'service uses to exchange job progress and reply analysis. No AI logic ' +
+    'lives in this app -- all LLM calls happen in the worker service (see ' +
+    'worker/scrapegraph_worker/conversation/).',
   author: 'Opika',
   category: 'Sales',
   logoUrl: 'public/logo.svg',
@@ -21,12 +22,23 @@ export default defineApplication({
   serverVariables: {
     SCRAPE_WORKER_WEBHOOK_SHARED_SECRET: {
       description:
-        'Shared secret the Scrapegraph worker service must send as a ' +
-        'Bearer token when POSTing job progress to /s/crm-sync/job-progress. ' +
-        'Must match TWENTY_WEBHOOK_SHARED_SECRET in the worker service\'s ' +
-        'own .env.',
+        'Shared secret used on BOTH webhook directions: the worker sends ' +
+        'it as a Bearer token when POSTing to /s/crm-sync/job-progress and ' +
+        '/s/crm-sync/conversation-signal, and reply-intelligence-trigger.ts ' +
+        "sends it as a Bearer token when POSTing to the worker's " +
+        '/conversation/analyze endpoint. Must match TWENTY_WEBHOOK_SHARED_SECRET ' +
+        "in the worker service's own .env.",
       isSecret: true,
       isRequired: true,
+    },
+    CONVERSATION_WORKER_BASE_URL: {
+      description:
+        'Base URL of the worker service (e.g. http://worker:8000 or ' +
+        'https://worker.yourcompany.com), used by reply-intelligence-trigger.ts ' +
+        'to POST inbound replies for analysis. Leave unset to disable the ' +
+        'trigger entirely (it no-ops rather than failing).',
+      isSecret: false,
+      isRequired: false,
     },
   },
 });

@@ -37,6 +37,43 @@ class TwentySettings:
     # own /jobs API) and never pushed into Twenty's ResearchJob/EnrichmentJob
     # records.
     progress_webhook_url: str = field(default_factory=lambda: os.getenv("TWENTY_PROGRESS_WEBHOOK_URL", ""))
+    # Same shape as progress_webhook_url, but for the Conversation
+    # Intelligence result -- points at the Twenty App's
+    # conversation-signal-webhook.ts route, e.g.
+    # ".../s/crm-sync/conversation-signal". Optional -- if unset, analysis
+    # still runs and is returned in the API response, it just never gets
+    # written back into Twenty as a ConversationSignal record.
+    conversation_signal_webhook_url: str = field(
+        default_factory=lambda: os.getenv("TWENTY_CONVERSATION_SIGNAL_WEBHOOK_URL", "")
+    )
+
+
+@dataclass(frozen=True)
+class LLMSettings:
+    """Config for whichever backend answers Conversation Intelligence
+    requests (see conversation/llm_client.py). Built around the
+    OpenAI-compatible /chat/completions schema so this is a one-line .env
+    swap between providers (Groq, OpenRouter, Together, a local Ollama, etc)
+    rather than a code change.
+    """
+
+    # e.g. "https://api.groq.com/openai/v1", "https://openrouter.ai/api/v1",
+    # or "http://localhost:11434/v1" for a local Ollama.
+    base_url: str = field(default_factory=lambda: os.getenv("LLM_BASE_URL", ""))
+    api_key: str = field(default_factory=lambda: os.getenv("LLM_API_KEY", ""))
+    model: str = field(default_factory=lambda: os.getenv("LLM_MODEL", ""))
+    timeout_seconds: float = field(default_factory=lambda: float(os.getenv("LLM_TIMEOUT_SECONDS", "30")))
+    temperature: float = field(default_factory=lambda: float(os.getenv("LLM_TEMPERATURE", "0.2")))
+    max_tokens: int = field(default_factory=lambda: int(os.getenv("LLM_MAX_TOKENS", "800")))
+    # Most OpenAI-compatible backends (Groq, OpenRouter, a recent Ollama)
+    # accept `response_format: {"type": "json_object"}`; a handful of free
+    # APIs reject unknown fields outright, so this is escape-hatched off
+    # rather than assumed.
+    supports_json_mode: bool = field(default_factory=lambda: _env_bool("LLM_SUPPORTS_JSON_MODE", True))
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.base_url and self.model)
 
 
 @dataclass(frozen=True)
@@ -50,6 +87,7 @@ class QueueSettings:
 @dataclass(frozen=True)
 class WorkerSettings:
     twenty: TwentySettings = field(default_factory=TwentySettings)
+    llm: LLMSettings = field(default_factory=LLMSettings)
     queue: QueueSettings = field(default_factory=QueueSettings)
     # Where job state (progress, logs, counts) is persisted for the /jobs API.
     # SQLite is enough for a single-instance worker; swap for Postgres by

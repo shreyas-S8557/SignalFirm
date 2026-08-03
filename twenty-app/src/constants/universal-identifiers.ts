@@ -67,6 +67,60 @@ export const COMPANY_LATEST_ICP_PRIORITY_FIELD_UNIVERSAL_IDENTIFIER =
 export const COMPANY_LAST_ENRICHED_AT_FIELD_UNIVERSAL_IDENTIFIER =
   '8ea4ee83-1dad-4b4f-9553-25e66a6e38ab';
 
+// -- ConversationSignal (Prompt 5: Conversation Intelligence) ------------
+export const CONVERSATION_SIGNAL_OBJECT_UNIVERSAL_IDENTIFIER =
+  '500b4651-e92f-4e37-b379-67816c260117';
+export const CONVERSATION_SIGNAL_STATUS_FIELD_UNIVERSAL_IDENTIFIER =
+  'b1349ec6-28d9-44b9-bdb0-e4b867a411e9';
+export const CONVERSATION_SIGNAL_INTEREST_LEVEL_FIELD_UNIVERSAL_IDENTIFIER =
+  '99c8d6b1-9a27-4e15-b509-220d5afb780c';
+export const CONVERSATION_SIGNAL_URGENCY_FIELD_UNIVERSAL_IDENTIFIER =
+  '990a2f0a-7dd8-47fe-8079-fff2d0d72490';
+export const CONVERSATION_SIGNAL_SENTIMENT_FIELD_UNIVERSAL_IDENTIFIER =
+  '271e26ab-a96d-4f14-8bf1-e9310c81d7f3';
+export const CONVERSATION_SIGNAL_OBJECTIONS_FIELD_UNIVERSAL_IDENTIFIER =
+  'b9503fce-2346-4209-b543-c1a6601771eb';
+export const CONVERSATION_SIGNAL_NEXT_ACTION_FIELD_UNIVERSAL_IDENTIFIER =
+  'e50c7aa6-cf69-4abb-b306-2c0968e49d68';
+export const CONVERSATION_SIGNAL_REPLY_DRAFT_FIELD_UNIVERSAL_IDENTIFIER =
+  'af44f2b5-7eb2-4288-bd0b-7c78dfecd091';
+export const CONVERSATION_SIGNAL_FOLLOW_UP_AT_FIELD_UNIVERSAL_IDENTIFIER =
+  'a2002120-7dd1-4701-a9ae-39316f0086b1';
+export const CONVERSATION_SIGNAL_CONFIDENCE_FIELD_UNIVERSAL_IDENTIFIER =
+  '614eac6d-48f0-4a04-abad-bb688742d979';
+export const CONVERSATION_SIGNAL_SOURCE_MESSAGE_ID_FIELD_UNIVERSAL_IDENTIFIER =
+  '76e96815-da74-48f5-9eab-2e09d4ba8a3b';
+export const CONVERSATION_SIGNAL_RAW_EXCERPT_FIELD_UNIVERSAL_IDENTIFIER =
+  'd6ca74d1-cb0c-4a63-a1ba-92c201164320';
+export const CONVERSATION_SIGNAL_ERROR_FIELD_UNIVERSAL_IDENTIFIER =
+  'b8ab4daf-90cf-4b7e-850a-fd9d6370d689';
+export const CONVERSATION_SIGNAL_MODEL_USED_FIELD_UNIVERSAL_IDENTIFIER =
+  'd3c5fa7e-b1aa-4039-a018-bb75af3c3fad';
+export const CONVERSATION_SIGNAL_PERSON_FIELD_UNIVERSAL_IDENTIFIER =
+  '61743f0e-a5d9-498c-90c7-5d727f3d1268';
+export const PERSON_CONVERSATION_SIGNALS_FIELD_UNIVERSAL_IDENTIFIER =
+  'da1ef5be-f8d2-431f-8e53-5a8c3993ebce';
+
+// -- Convenience fields added onto the standard Person object ------------
+// Denormalized "latest signal" fields so a Person list view can show
+// interest/urgency without joining to ConversationSignal. Full history
+// still lives in ConversationSignal records.
+export const PERSON_LATEST_INTEREST_LEVEL_FIELD_UNIVERSAL_IDENTIFIER =
+  '27e0ece1-954d-4301-8b42-f051ca7c6c66';
+export const PERSON_LATEST_URGENCY_FIELD_UNIVERSAL_IDENTIFIER =
+  '8a10a06e-6354-4b52-9df2-0d569612c26a';
+export const PERSON_LAST_CONVERSATION_SIGNAL_AT_FIELD_UNIVERSAL_IDENTIFIER =
+  'a1960f52-dc31-44a5-acb5-4f607a29e20c';
+
 // -- Logic functions --------------------------------------------------------
 export const JOB_PROGRESS_WEBHOOK_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   '8f05f2ef-2009-449d-bd94-6c2955ae15cb';
+// Fires when Twenty's own email sync creates a new Message record; filters
+// down to inbound replies and forwards them to the worker's Conversation
+// Intelligence endpoint for LLM analysis.
+export const REPLY_INTELLIGENCE_TRIGGER_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'a6941bf6-9eca-4237-b466-c73e3fabe8a3';
+// Receives the analysis result back from the worker and writes a
+// ConversationSignal record (+ denormalized Person fields).
+export const CONVERSATION_SIGNAL_WEBHOOK_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'aa585acb-0e55-4b88-aef0-e4e12eb7d830';

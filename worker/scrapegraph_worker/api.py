@@ -13,10 +13,14 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 from .config import load_settings
+from .conversation.analyzer import analyze_reply
+from .conversation.llm_client import LLMClient
+from .conversation.models import ReplyAnalysisRequest
+from .conversation.twenty_push import push_conversation_signal_to_twenty
 from .jobs import enqueue_import_job
 from .models import JobRecord, JobStage
 from .progress import JobStore
@@ -74,3 +78,58 @@ def retry_job(job_id: str) -> CreateJobResponse:
         phases=job.params.get("phases"),
     )
     return CreateJobResponse(job_id=new_job_id)
+
+
+class ConversationAnalyzeResponse(BaseModel):
+    status: str
+    interest_level: str
+    urgency: str
+    sentiment: str
+    objections: list[str]
+    recommended_next_action: str
+    recommended_reply_draft: Optional[str] = None
+    recommended_follow_up_at: Optional[str] = None
+    confidence: float
+    pushed_to_twenty: bool
+    error_message: Optional[str] = None
+
+
+@app.post("/conversation/analyze", response_model=ConversationAnalyzeResponse)
+def analyze_conversation_reply(
+    request: ReplyAnalysisRequest,
+    authorization: Optional[str] = Header(default=None),
+) -> ConversationAnalyzeResponse:
+    """Called by reply-intelligence-trigger.ts whenever a genuine inbound
+    reply is detected. This is the new direction of the shared-secret
+    handshake (Twenty -> worker) -- job-progress-webhook.ts is worker ->
+    Twenty, this is the reverse, but the same secret and Bearer-header
+    convention is reused on both sides (see application.config.ts).
+    """
+    expected = f"Bearer {_settings.twenty.webhook_shared_secret}"
+    if not _settings.twenty.webhook_shared_secret or authorization != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not _settings.llm.is_configured:
+        raise HTTPException(
+            status_code=503,
+            detail="LLM_BASE_URL / LLM_MODEL are not configured -- Conversation Intelligence is disabled",
+        )
+
+    with LLMClient(_settings.llm) as client:
+        result = analyze_reply(request, client, model_name=_settings.llm.model)
+
+    pushed = push_conversation_signal_to_twenty(_settings.twenty, request, result)
+
+    return ConversationAnalyzeResponse(
+        status=result.status,
+        interest_level=result.interest_level.value,
+        urgency=result.urgency.value,
+        sentiment=result.sentiment.value,
+        objections=result.objections,
+        recommended_next_action=result.recommended_next_action.value,
+        recommended_reply_draft=result.recommended_reply_draft,
+        recommended_follow_up_at=result.recommended_follow_up_at,
+        confidence=result.confidence,
+        pushed_to_twenty=pushed,
+        error_message=result.error_message,
+    )
