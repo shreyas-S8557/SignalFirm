@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------
+   Design tokens -- "Signal Intelligence" console theme.
+
+   The palette is built from the domain itself: recommendations already
+   carry a HOT / WARM / COLD temperature, so that's the accent system,
+   not an arbitrary brand color. --signal is the one UI color that isn't
+   part of the heat scale, reserved for primary actions/navigation so it
+   never collides with a temperature meaning.
+   ------------------------------------------------------------------- */
+:root {
+  --canvas: #f2f3ef;
+  --canvas-raised: #fbfbf9;
+  --ink: #14181c;
+  --ink-dim: #565f66;
+  --ink-faint: #8b939a;
+  --line: #dcded7;
+  --line-strong: #c3c6bd;
+
+  --signal: #2f6f5e;
+  --signal-ink: #eef6f3;
+
+  --hot: #e0492b;
+  --hot-ink: #fdece7;
+  --warm: #c98a1f;
+  --warm-ink: #faf1de;
+  --cold: #3f6f92;
+  --cold-ink: #e9f0f5;
+  --gray: #767d83;
+  --gray-ink: #eceeec;
+
+  --font-display: -apple-system, "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Berkeley Mono", Menlo, Consolas, monospace;
+
+  --radius: 7px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.font-mono-data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

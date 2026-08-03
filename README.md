@@ -102,6 +102,19 @@ answering exactly the questions above, in that order.
   into Twenty (no new object, no field write) -- it only reads existing
   Person/Company/ConversationSignal data and produces a digest.
 
+## Phase 9 -- Frontend
+
+A standalone dashboard covering the six Phase 9 surfaces (Daily dashboard,
+Recommendations widget, Suggested Message button, Conversation panel, AI
+Insights panel, Research tab) lives in [`frontend/`](./frontend/README.md).
+It's standalone rather than embedded in Twenty's own UI because Twenty's
+frontend monorepo isn't checked out anywhere in this repo -- see that
+README for how each piece is scoped so it's a drop-in candidate once it is.
+It talks to three new read-only endpoints added to `worker/`'s API
+(`/people/{id}/conversation-signals`, `/companies/{id}/research-jobs`,
+`/companies/{id}/insights`) and falls back to fixture data when no worker
+is running, so it's fully browsable on its own.
+
 ## What's NOT connected to anything yet
 
 `EnrichmentJob`, `ICPScore`, and the `Company.latestIcpScore`/`latestIcpPriority`/`lastEnrichedAt` fields are declared in `twenty-app/` but nothing writes to them — they're scaffolded now so a later milestone (enrichment, AI research, ICP scoring) doesn't require a breaking schema change. Conversation Intelligence (above) is the first AI/LLM code in this repo; enrichment and ICP scoring still have none. The Recommendation Engine (above) reads `latestIcpScore`/`latestIcpPriority` as an *optional* bonus input if present, but doesn't require them — until a later milestone starts writing them, its ranking runs purely on Conversation Intelligence signal.
