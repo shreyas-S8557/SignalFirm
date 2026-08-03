@@ -29,3 +29,18 @@ services:
       - ${SCRAPEGRAPH_REPO_PATH:-../Scrapegraph}:/scrapegraph
     depends_on:
       - redis
+
+  recommendations-scheduler:
+    build: .
+    command: python -m scrapegraph_worker.recommendations_scheduler_main
+    env_file: .env
+    # Fires the Recommendation Engine's daily digest at DIGEST_SCHEDULE_HOUR:
+    # DIGEST_SCHEDULE_MINUTE (DIGEST_TIMEZONE) every day -- see
+    # scrapegraph_worker/recommendations/ and .env.example's DIGEST_* vars.
+    # Doesn't touch Redis/the scrape queue at all, so it has no `depends_on`
+    # here; it only talks to Twenty's REST API and (optionally) SMTP/Slack.
+    volumes:
+      # Only ever written to if neither DIGEST_EMAIL_TO nor
+      # DIGEST_SLACK_WEBHOOK_URL is set (see recommendations/delivery.py) --
+      # mounted so that fallback case is still visible on the host.
+      - ./daily_digest.md:/app/daily_digest.md

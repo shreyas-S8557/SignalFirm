@@ -81,15 +81,23 @@ class TwentyClient:
         search_query: Optional[str] = None,
         limit: int = 25,
         depth: int = 0,
+        order_by: Optional[str] = None,
     ) -> list[dict]:
         """GET /rest/{objectNamePlural}. `filter_query` is Twenty's REST filter
         syntax, e.g. "domainName[eq]:acme.com" or "name[ilike]:%acme%".
+        `order_by` is Twenty's REST sort syntax, e.g.
+        "createdAt[DescNullsLast]" -- used by the Recommendation Engine
+        (`recommendations/engine.py`) to fetch a person's *most recent*
+        ConversationSignal rather than an arbitrary one. Omitted by default
+        so existing callers that don't care about order see no change.
         """
         params: dict[str, Any] = {"limit": limit, "depth": depth}
         if filter_query:
             params["filter"] = filter_query
         if search_query:
             params["searchQuery"] = search_query
+        if order_by:
+            params["orderBy"] = order_by
         data = self._request("GET", f"/rest/{object_name_plural}", params=params)
         return data.get("data", {}).get(object_name_plural, []) if data else []
 

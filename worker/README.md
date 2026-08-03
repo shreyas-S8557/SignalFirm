@@ -2,8 +2,11 @@
 
 Turns your existing Scrapegraph CLI pipeline into a queued background job and
 syncs its output into Twenty CRM as Companies, Contacts, Opportunities
-("Leads"), and Notes ("Activities"), with deduplication. **No AI/LLM logic
-lives here** — this milestone is data plumbing only, per scope.
+("Leads"), and Notes ("Activities"), with deduplication. It also hosts
+Conversation Intelligence (LLM-based reply analysis, see the top-level
+README) and the Recommendation Engine (the every-morning digest built on top
+of it, see below) — the only two places LLM/derived-scoring logic lives in
+this repo.
 
 ## How a scraped row becomes CRM records
 
@@ -72,6 +75,48 @@ curl localhost:8000/jobs
 curl -X POST localhost:8000/jobs/<job_id>/retry
 ```
 
+## Recommendation Engine — every morning: contact / ignore / hot / cold / buying intent / best message
+
+See the top-level README for the full description. Quick reference for this service:
+
+```bash
+# On-demand digest as JSON (buckets, scores, reasons, best_message per person)
+curl localhost:8000/recommendations/daily-digest
+
+# Same digest, pre-rendered as Markdown (what actually gets emailed/Slacked)
+curl localhost:8000/recommendations/daily-digest.md
+
+# Trigger delivery now through whatever's configured in .env (email/Slack/
+# local-file fallback) -- returns which transport(s) actually succeeded
+curl -X POST localhost:8000/recommendations/daily-digest/send
+```
+
+To have it run automatically every day at a set time, start the scheduler
+process alongside `api`/`worker` (already wired into `docker-compose.yml` as
+the `recommendations-scheduler` service):
+
+```bash
+python -m scrapegraph_worker.recommendations_scheduler_main
+```
+
+Configure via `.env` (see `.env.example`'s `DIGEST_*` block):
+
+| Variable | Purpose |
+|---|---|
+| `DIGEST_SCHEDULE_HOUR` / `DIGEST_SCHEDULE_MINUTE` / `DIGEST_TIMEZONE` | When the scheduler fires each day |
+| `DIGEST_SMTP_*` / `DIGEST_EMAIL_TO` | Optional email delivery |
+| `DIGEST_SLACK_WEBHOOK_URL` | Optional Slack delivery |
+| `DIGEST_FALLBACK_FILE_PATH` | Where the digest is written if neither of the above is configured |
+
+Every delivery transport is independently optional — the digest is always
+computable and always available via the two `GET` endpoints above regardless
+of what's configured for delivery.
+
+**Scope reminder:** only People with at least one `ConversationSignal` are
+considered (see `scrapegraph_worker/recommendations/engine.py`'s module
+docstring) — this ranks people you've already heard back from, it does not
+prioritize cold outreach to never-contacted prospects.
+
 ## Testing
 
 ```bash
@@ -79,7 +124,7 @@ pip install -r requirements.txt --break-system-packages
 pytest tests/ -v
 ```
 
-`tests/test_dedup.py` and `tests/test_sync.py` run fully offline — `test_sync.py` uses `FakeTwentyClient` (`tests/conftest.py`), an in-memory stand-in implementing the same surface `sync.py` calls, so the create/dedupe/update logic is verified without a real Twenty instance, Redis, or network access. **I ran this suite in the sandbox while building it** (15/15 passing) — it caught and fixed two real bugs in the dedup normalization logic before this was ever pointed at real data.
+`tests/test_dedup.py` and `tests/test_sync.py` run fully offline — `test_sync.py` uses `FakeTwentyClient` (`tests/conftest.py`), an in-memory stand-in implementing the same surface `sync.py` calls, so the create/dedupe/update logic is verified without a real Twenty instance, Redis, or network access. `tests/test_recommendations_*.py` cover the Recommendation Engine the same way: `test_recommendations_scorer.py` is pure unit tests on `scorer.py` (no fakes needed — it's arithmetic), and `test_recommendations_engine.py`/`test_recommendations_render.py` reuse the same `FakeTwentyClient`, extended with a `conversationSignals` store and minimal `order_by` support, to verify bucketing/ranking/message-selection end to end. **I ran the full suite in the sandbox while building it** (61/61 passing) — it caught and fixed two real bugs in the dedup normalization logic before this was ever pointed at real data.
 
 What I could **not** verify here, for lack of network/a live Twenty instance: the actual REST endpoint shapes (`/rest/companies`, `/rest/noteTargets`, filter-query syntax) against a real Twenty server, and the RQ/Redis queueing end-to-end. Those follow Twenty's documented REST conventions closely, but a first real run against your dev workspace is the true test — expect to need small fixes to exact field names (e.g. whether it's `domainName.primaryLinkUrl` or a different path in your Twenty version) once you point this at a real instance, and I'd rather you hit those directly and report back than have me guess further blind.
 
@@ -89,8 +134,8 @@ What I could **not** verify here, for lack of network/a live Twenty instance: th
 
 ## What's intentionally NOT in this milestone
 
-- No AI/LLM calls anywhere in `scrapegraph_worker/`.
-- `EnrichmentJob` and `ICPScore` custom objects exist in the Twenty App but nothing writes to them yet.
-- No message generation, conversation intelligence, or recommendations.
+- `EnrichmentJob` and `ICPScore` custom objects exist in the Twenty App but nothing writes to them yet — the Recommendation Engine reads `latestIcpScore`/`latestIcpPriority` as an optional bonus if present, but doesn't require them.
+- The Recommendation Engine never auto-sends anything and never writes back into Twenty — it only reads Person/Company/ConversationSignal data and produces a digest, the same "draft for a human to review" boundary Conversation Intelligence draws around `recommendedReplyDraft`.
+- It also doesn't prioritize cold, never-contacted prospects — see its scope note above.
 
-These come in the milestones that follow, per the sequencing in the architecture-analysis document.
+Enrichment and ICP scoring proper come in the milestones that follow, per the sequencing in the architecture-analysis document.

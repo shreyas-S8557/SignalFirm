@@ -57,7 +57,52 @@ If you deploy `worker/` before `twenty-app/` is synced, Companies/People/Opportu
 
 **What this module deliberately does NOT do:** it never sends a reply, never moves an Opportunity to won/lost, and never books a follow-up on a calendar. `MARK_WON` / `MARK_LOST` / `SCHEDULE_FOLLOW_UP` are recommendations sitting on a `ConversationSignal` record for a human to act on -- turning those into automatic Opportunity/Task writes is a deliberate scope boundary for this milestone, not an oversight, in keeping with `recommendedReplyDraft` never being auto-sent.
 
+## Recommendation Engine
+
+**Every morning**, this module turns what Conversation Intelligence has already
+learned into a ranked digest: **who to contact, who to ignore, who's hot,
+who's cold, highest buying intent, and a best-first message for each** --
+answering exactly the questions above, in that order.
+
+- *Scope* -- only considers People with at least one `ConversationSignal`
+  (i.e. `Person.lastConversationSignalAt` is set). Prioritizing brand-new,
+  never-contacted prospects is a different question (ICP scoring) that
+  isn't wired up yet -- see "What's NOT connected to anything yet" below --
+  so this milestone deliberately doesn't answer it either.
+- *Scoring* -- a deterministic 0-100 "buying intent" score from interest
+  level, urgency, sentiment, and signal recency (a decay curve, so a hot
+  reply from six weeks ago doesn't outrank a lukewarm one from yesterday),
+  plus an optional bonus from `Company.latestIcpScore`/`latestIcpPriority`
+  once a later milestone starts populating those. No new LLM calls happen
+  here -- every input is already an enum Conversation Intelligence
+  normalized (see `worker/scrapegraph_worker/conversation/analyzer.py`).
+- *Contact vs. ignore* -- a separate decision from hot/cold: a resolved
+  deal (`MARK_WON`/`MARK_LOST`) or a thread stale past 45 days is always
+  "ignore," no matter how hot its last signal looked; an explicit
+  `SEND_REPLY`/`ESCALATE_TO_HUMAN` or a due follow-up is always "contact
+  today," no matter the score.
+- *Best message* -- reuses Conversation Intelligence's own
+  `recommendedReplyDraft` whenever the recommended action calls for one
+  (that draft already has full thread context a re-derivation from just the
+  score wouldn't); falls back to a short, generic re-engagement template
+  only when no such draft exists.
+- *Delivery* -- `worker/scrapegraph_worker/recommendations_scheduler_main.py`
+  runs as its own always-on process and fires the digest at a configured
+  time daily (`DIGEST_SCHEDULE_HOUR`/`DIGEST_SCHEDULE_MINUTE`/
+  `DIGEST_TIMEZONE`), delivered via email (SMTP) and/or Slack (incoming
+  webhook) -- both optional and independent, same "missing config means
+  don't send this way, not crash" philosophy as the rest of the worker. On
+  demand, hit `GET /recommendations/daily-digest` (JSON) or
+  `GET /recommendations/daily-digest.md` (rendered Markdown), or
+  `POST /recommendations/daily-digest/send` to trigger delivery manually.
+  Full config: [`worker/README.md`](./worker/README.md).
+- *What this module deliberately does NOT do* -- no auto-sending: every
+  message is a draft for a human to review, same boundary as Conversation
+  Intelligence's `recommendedReplyDraft`. It also never writes anything back
+  into Twenty (no new object, no field write) -- it only reads existing
+  Person/Company/ConversationSignal data and produces a digest.
+
 ## What's NOT connected to anything yet
 
-`EnrichmentJob`, `ICPScore`, and the `Company.latestIcpScore`/`latestIcpPriority`/`lastEnrichedAt` fields are declared in `twenty-app/` but nothing writes to them — they're scaffolded now so a later milestone (enrichment, AI research, ICP scoring) doesn't require a breaking schema change. Conversation Intelligence (above) is the first AI/LLM code in this repo; enrichment and ICP scoring still have none.
+`EnrichmentJob`, `ICPScore`, and the `Company.latestIcpScore`/`latestIcpPriority`/`lastEnrichedAt` fields are declared in `twenty-app/` but nothing writes to them — they're scaffolded now so a later milestone (enrichment, AI research, ICP scoring) doesn't require a breaking schema change. Conversation Intelligence (above) is the first AI/LLM code in this repo; enrichment and ICP scoring still have none. The Recommendation Engine (above) reads `latestIcpScore`/`latestIcpPriority` as an *optional* bonus input if present, but doesn't require them — until a later milestone starts writing them, its ranking runs purely on Conversation Intelligence signal.
 

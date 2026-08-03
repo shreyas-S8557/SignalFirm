@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from .config import load_settings
@@ -24,6 +25,11 @@ from .conversation.twenty_push import push_conversation_signal_to_twenty
 from .jobs import enqueue_import_job
 from .models import JobRecord, JobStage
 from .progress import JobStore
+from .recommendations.delivery import deliver_digest
+from .recommendations.engine import build_daily_digest
+from .recommendations.models import DailyDigest
+from .recommendations.render import render_markdown
+from .twenty_client import TwentyClient
 
 app = FastAPI(title="Scrapegraph Worker", version="0.1.0")
 _settings = load_settings()
@@ -133,3 +139,45 @@ def analyze_conversation_reply(
         pushed_to_twenty=pushed,
         error_message=result.error_message,
     )
+
+
+@app.get("/recommendations/daily-digest", response_model=DailyDigest)
+def get_daily_digest() -> DailyDigest:
+    """On-demand version of what `recommendations_scheduler_main.py` runs
+    every morning -- same engine, same scoring, just computed synchronously
+    on request rather than on a schedule. Useful for testing scoring
+    changes, or for driving the digest from a scheduler you already run
+    instead of this repo's own (see `POST .../send` below).
+    """
+    with TwentyClient(_settings.twenty) as client:
+        return build_daily_digest(client)
+
+
+@app.get("/recommendations/daily-digest.md", response_class=PlainTextResponse)
+def get_daily_digest_markdown() -> str:
+    """Same digest as above, pre-rendered as Markdown -- what actually gets
+    emailed/Slacked every morning (see `recommendations/render.py`).
+    """
+    with TwentyClient(_settings.twenty) as client:
+        digest = build_daily_digest(client)
+    return render_markdown(digest)
+
+
+class SendDailyDigestResponse(BaseModel):
+    considered_count: int
+    delivered: dict[str, bool]
+
+
+@app.post("/recommendations/daily-digest/send", response_model=SendDailyDigestResponse)
+def send_daily_digest() -> SendDailyDigestResponse:
+    """Manually triggers today's digest through the same delivery transports
+    (email/Slack/local-file fallback -- see `recommendations/delivery.py`)
+    the scheduler uses. Handy for testing `DIGEST_*` env vars without
+    waiting for the scheduled hour, or for triggering delivery from an
+    external cron instead of running `recommendations_scheduler_main.py`.
+    """
+    with TwentyClient(_settings.twenty) as client:
+        digest = build_daily_digest(client)
+    markdown = render_markdown(digest)
+    results = deliver_digest(_settings.digest, markdown=markdown)
+    return SendDailyDigestResponse(considered_count=digest.considered_count, delivered=results)

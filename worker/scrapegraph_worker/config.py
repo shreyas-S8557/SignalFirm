@@ -77,6 +77,40 @@ class LLMSettings:
 
 
 @dataclass(frozen=True)
+class DigestSettings:
+    """Config for the Recommendation Engine's daily digest (see
+    `recommendations/`). Every delivery transport is optional -- see
+    `recommendations/delivery.py` for the fallback chain -- so leaving all
+    of these unset still lets the digest be computed and read via
+    `GET /recommendations/daily-digest`, it just doesn't get pushed
+    anywhere on its own.
+    """
+
+    # When `recommendations_scheduler_main.py` fires the digest each day.
+    schedule_hour: int = field(default_factory=lambda: int(os.getenv("DIGEST_SCHEDULE_HOUR", "7")))
+    schedule_minute: int = field(default_factory=lambda: int(os.getenv("DIGEST_SCHEDULE_MINUTE", "0")))
+    timezone: str = field(default_factory=lambda: os.getenv("DIGEST_TIMEZONE", "UTC"))
+
+    # Optional email delivery via plain SMTP.
+    smtp_host: str = field(default_factory=lambda: os.getenv("DIGEST_SMTP_HOST", ""))
+    smtp_port: int = field(default_factory=lambda: int(os.getenv("DIGEST_SMTP_PORT", "587")))
+    smtp_user: str = field(default_factory=lambda: os.getenv("DIGEST_SMTP_USER", ""))
+    smtp_password: str = field(default_factory=lambda: os.getenv("DIGEST_SMTP_PASSWORD", ""))
+    smtp_from: str = field(default_factory=lambda: os.getenv("DIGEST_SMTP_FROM", ""))
+    smtp_use_tls: bool = field(default_factory=lambda: _env_bool("DIGEST_SMTP_USE_TLS", True))
+    email_to: str = field(default_factory=lambda: os.getenv("DIGEST_EMAIL_TO", ""))
+
+    # Optional Slack delivery via an incoming webhook URL.
+    slack_webhook_url: str = field(default_factory=lambda: os.getenv("DIGEST_SLACK_WEBHOOK_URL", ""))
+
+    # Used only when neither email nor Slack is configured, so a fresh
+    # deploy still produces a visible artifact instead of a silent no-op.
+    fallback_file_path: str = field(
+        default_factory=lambda: os.getenv("DIGEST_FALLBACK_FILE_PATH", "./daily_digest.md")
+    )
+
+
+@dataclass(frozen=True)
 class QueueSettings:
     redis_url: str = field(default_factory=lambda: os.getenv("REDIS_URL", "redis://localhost:6379/0"))
     queue_name: str = field(default_factory=lambda: os.getenv("SCRAPE_QUEUE_NAME", "scrapegraph-jobs"))
@@ -88,6 +122,7 @@ class QueueSettings:
 class WorkerSettings:
     twenty: TwentySettings = field(default_factory=TwentySettings)
     llm: LLMSettings = field(default_factory=LLMSettings)
+    digest: DigestSettings = field(default_factory=DigestSettings)
     queue: QueueSettings = field(default_factory=QueueSettings)
     # Where job state (progress, logs, counts) is persisted for the /jobs API.
     # SQLite is enough for a single-instance worker; swap for Postgres by

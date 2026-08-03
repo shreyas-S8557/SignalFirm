@@ -22,6 +22,7 @@ class FakeTwentyClient:
         self.notes: dict[str, dict] = {}
         self.note_targets: list[dict] = []
         self.research_jobs: dict[str, dict] = {}
+        self.conversation_signals: dict[str, dict] = {}
         self.calls: list[tuple] = []
 
     def _new_id(self) -> str:
@@ -29,26 +30,38 @@ class FakeTwentyClient:
 
     # -- generic dispatch used by sync.py --------------------------------
 
-    def find_records(self, object_name_plural, *, filter_query=None, search_query=None, limit=25, depth=0):
+    def find_records(
+        self, object_name_plural, *, filter_query=None, search_query=None, limit=25, depth=0, order_by=None
+    ):
         self.calls.append(("find_records", object_name_plural, filter_query))
         store = self._store_for(object_name_plural)
         if store is None:
             return []
         if not filter_query:
-            return list(store.values())[:limit]
-        # Extremely small filter-language subset for tests: "field[op]:value"
-        field, rest = filter_query.split("[", 1)
-        op, value = rest.split("]:", 1)
-        value = value.strip("%").strip('"')
-        results = []
-        for record in store.values():
-            actual = _get_path(record, field)
-            if actual is None:
-                continue
-            if op == "eq" and actual == value:
-                results.append(record)
-            elif op == "ilike" and value.lower() in str(actual).lower():
-                results.append(record)
+            results = list(store.values())
+        else:
+            # Extremely small filter-language subset for tests: "field[op]:value"
+            field, rest = filter_query.split("[", 1)
+            op, value = rest.split("]:", 1)
+            value = value.strip("%").strip('"')
+            results = []
+            for record in store.values():
+                actual = _get_path(record, field)
+                if actual is None:
+                    continue
+                if op == "eq" and actual == value:
+                    results.append(record)
+                elif op == "ilike" and value.lower() in str(actual).lower():
+                    results.append(record)
+
+        # Extremely small order-by subset for tests: "field[DescNullsLast]"
+        # or "field[AscNullsLast]" -- enough to cover engine.py fetching a
+        # person's *latest* conversationSignal.
+        if order_by and "[" in order_by:
+            field, rest = order_by.split("[", 1)
+            desc = rest.rstrip("]").lower().startswith("desc")
+            results = sorted(results, key=lambda r: _get_path(r, field) or "", reverse=desc)
+
         return results[:limit]
 
     def create_record(self, object_name_plural, fields):
@@ -92,6 +105,7 @@ class FakeTwentyClient:
             "opportunities": self.opportunities,
             "notes": self.notes,
             "researchJobs": self.research_jobs,
+            "conversationSignals": self.conversation_signals,
         }.get(object_name_plural)
 
 
