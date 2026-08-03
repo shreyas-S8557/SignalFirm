@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build: .
+    command: uvicorn scrapegraph_worker.api:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - ./scrapegraph_jobs.db:/app/scrapegraph_jobs.db
+      # Mount your actual Scrapegraph repo checkout so the worker can shell
+      # out to its CLI pipeline (see scrapegraph_worker/scrape_adapter.py).
+      - ${SCRAPEGRAPH_REPO_PATH:-../Scrapegraph}:/scrapegraph
+    depends_on:
+      - redis
+
+  worker:
+    build: .
+    command: python -m scrapegraph_worker.worker_main
+    env_file: .env
+    volumes:
+      - ./scrapegraph_jobs.db:/app/scrapegraph_jobs.db
+      - ${SCRAPEGRAPH_REPO_PATH:-../Scrapegraph}:/scrapegraph
+    depends_on:
+      - redis

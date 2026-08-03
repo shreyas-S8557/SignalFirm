@@ -1,0 +1,163 @@
+"""Thin, typed wrapper around Twenty's Core REST API.
+
+Twenty generates a REST endpoint per object using its `namePlural`
+(e.g. Company -> /rest/companies, Person -> /rest/people, Opportunity ->
+/rest/opportunities, Note -> /rest/notes). Custom objects get the same
+treatment (ResearchJob -> /rest/researchJobs, EnrichmentJob ->
+/rest/enrichmentJobs, ICPScore -> /rest/icpScores), once the Twenty App in
+`twenty-app-crm-sync/` has been synced into the workspace.
+
+This module intentionally does zero business logic (no dedup, no field
+mapping decisions) -- that all lives in `sync.py`. It just knows how to talk
+to the API: auth header, base URL, batching, pagination, and turning non-2xx
+responses into a single exception type the rest of the worker can catch.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Iterable, Optional
+
+import httpx
+
+from .config import TwentySettings
+
+
+class TwentyAPIError(RuntimeError):
+    def __init__(self, status_code: int, message: str, payload: Any = None):
+        super().__init__(f"Twenty API error {status_code}: {message}")
+        self.status_code = status_code
+        self.payload = payload
+
+
+class TwentyClient:
+    """Sync HTTP client. Kept synchronous deliberately -- the worker calls this
+    from RQ jobs (which are themselves synchronous), so there's no async
+    runtime to plug into here.
+    """
+
+    def __init__(self, settings: TwentySettings, http_client: Optional[httpx.Client] = None):
+        self._settings = settings
+        self._http = http_client or httpx.Client(
+            base_url=settings.base_url.rstrip("/"),
+            timeout=settings.timeout_seconds,
+            headers={
+                "Authorization": f"Bearer {settings.api_key}",
+                "Content-Type": "application/json",
+            },
+        )
+
+    def close(self) -> None:
+        self._http.close()
+
+    def __enter__(self) -> "TwentyClient":
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
+
+    # -- low-level helpers ---------------------------------------------
+
+    def _request(self, method: str, path: str, **kwargs: Any) -> Any:
+        response = self._http.request(method, path, **kwargs)
+        if response.status_code >= 400:
+            try:
+                payload = response.json()
+                message = payload.get("messages", [payload]) if isinstance(payload, dict) else payload
+            except ValueError:
+                payload = response.text
+                message = payload
+            raise TwentyAPIError(response.status_code, str(message), payload)
+        if response.status_code == 204 or not response.content:
+            return None
+        return response.json()
+
+    # -- generic record CRUD ---------------------------------------------
+
+    def find_records(
+        self,
+        object_name_plural: str,
+        *,
+        filter_query: Optional[str] = None,
+        search_query: Optional[str] = None,
+        limit: int = 25,
+        depth: int = 0,
+    ) -> list[dict]:
+        """GET /rest/{objectNamePlural}. `filter_query` is Twenty's REST filter
+        syntax, e.g. "domainName[eq]:acme.com" or "name[ilike]:%acme%".
+        """
+        params: dict[str, Any] = {"limit": limit, "depth": depth}
+        if filter_query:
+            params["filter"] = filter_query
+        if search_query:
+            params["searchQuery"] = search_query
+        data = self._request("GET", f"/rest/{object_name_plural}", params=params)
+        return data.get("data", {}).get(object_name_plural, []) if data else []
+
+    def get_record(self, object_name_plural: str, record_id: str, *, depth: int = 0) -> Optional[dict]:
+        try:
+            data = self._request("GET", f"/rest/{object_name_plural}/{record_id}", params={"depth": depth})
+        except TwentyAPIError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+        return data.get("data", {}).get(object_name_plural[:-1] if object_name_plural.endswith("s") else object_name_plural) if data else None
+
+    def create_record(self, object_name_plural: str, fields: dict) -> dict:
+        object_name_singular = _singular(object_name_plural)
+        data = self._request("POST", f"/rest/{object_name_plural}", json=fields)
+        return data["data"][object_name_singular]
+
+    def update_record(self, object_name_plural: str, record_id: str, fields: dict) -> dict:
+        object_name_singular = _singular(object_name_plural)
+        data = self._request("PATCH", f"/rest/{object_name_plural}/{record_id}", json=fields)
+        return data["data"][object_name_singular]
+
+    def create_records_batch(self, object_name_plural: str, records: list[dict]) -> list[dict]:
+        """Create up to `settings.max_batch_size` records in one call."""
+        if len(records) > self._settings.max_batch_size:
+            raise ValueError(
+                f"Batch of {len(records)} exceeds Twenty's max batch size of {self._settings.max_batch_size}"
+            )
+        if not records:
+            return []
+        data = self._request("POST", f"/rest/batch/{object_name_plural}", json=records)
+        return data["data"][object_name_plural]
+
+    # -- domain-specific convenience lookups ------------------------------
+
+    def find_company_by_domain(self, domain: str) -> Optional[dict]:
+        matches = self.find_records("companies", filter_query=f"domainName.primaryLinkUrl[ilike]:%{domain}%", limit=1)
+        return matches[0] if matches else None
+
+    def find_company_by_name(self, name: str) -> Optional[dict]:
+        matches = self.find_records("companies", filter_query=f"name[ilike]:{_escape_filter(name)}", limit=1)
+        return matches[0] if matches else None
+
+    def find_person_by_email(self, email: str) -> Optional[dict]:
+        matches = self.find_records("people", filter_query=f"emails.primaryEmail[eq]:{_escape_filter(email)}", limit=1)
+        return matches[0] if matches else None
+
+    def find_person_by_linkedin(self, linkedin_url: str) -> Optional[dict]:
+        matches = self.find_records(
+            "people", filter_query=f"linkedinLink.primaryLinkUrl[eq]:{_escape_filter(linkedin_url)}", limit=1
+        )
+        return matches[0] if matches else None
+
+
+def _singular(name_plural: str) -> str:
+    # Matches Twenty's own convention: strip a trailing "s". Objects with
+    # irregular plurals (namePlural explicitly set, e.g. "people") must be
+    # special-cased here if/when they come up.
+    if name_plural == "people":
+        return "person"
+    if name_plural.endswith("s"):
+        return name_plural[:-1]
+    return name_plural
+
+
+def _escape_filter(value: str) -> str:
+    # Twenty's REST filter grammar uses ":" and "," as separators; a value
+    # containing either must be quoted. Kept intentionally conservative.
+    if any(c in value for c in [":", ",", "(", ")"]):
+        return f'"{value}"'
+    return value
