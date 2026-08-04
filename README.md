@@ -40,6 +40,10 @@ Worker → Twenty was the whole integration surface originally (job progress). C
 
 If you deploy `worker/` before `twenty-app/` is synced, Companies/People/Opportunities/Notes still get created fine (they don't depend on the app) — only `ResearchJob` writes and Conversation Intelligence get skipped (with a logged warning, or a silent no-op on the trigger side) until the app catches up. Nothing breaks, you just won't see progress or reply analysis inside Twenty until both sides are up.
 
+## A note on how the sections below are ordered
+
+The sections that follow are a changelog, not a numbered spec — **newest work first**. That's why "Production Readiness" and "AI Outbound Messaging & ICP Scoring" sit above "Phase 9 -- Frontend" even though their own labels sound earlier: those two were built in the most recent pass and are labeled after the *original* architecture-analysis backlog's numbering (which called them Phase 9 and Phase 6). "Phase 8" and "Phase 9 -- Frontend" further down predate that backlog and had already claimed those same two numbers for the Twenty-embedded and standalone frontend work. Two independent numbering tracks that happened to collide — not a typo, and not a reason to renumber either one after the fact.
+
 ## Conversation Intelligence
 
 **When replies arrive**, this module detects **interest, objections, urgency, and sentiment**, then recommends a **reply, follow-up, and next action** -- all as a `ConversationSignal` record for a human to review, never auto-sent or auto-applied.
@@ -114,10 +118,7 @@ a Locust load-test skeleton, and `SECURITY.md` -- an honest checklist of
 what's handled, what's a deployment-time decision, and what's genuinely
 outstanding (no completed pen test, no CI-integrated dependency-CVE
 scanning beyond Dependabot's update PRs). See `worker/README.md`'s
-"Production Readiness" section and `SECURITY.md`. (Numbered "Phase 9" in
-the original architecture-analysis backlog -- left unnumbered here since
-this repo's own doc already uses "Phase 9" for the standalone Frontend
-milestone below; the two numbering tracks predate each other.)
+"Production Readiness" section and `SECURITY.md`.
 
 ## AI Outbound Messaging (Phase 6) & ICP Scoring
 
@@ -182,12 +183,14 @@ and turns it into a tech-stack list, hiring/buying signals, a headcount
 proxy, a LinkedIn-*derived* seniority-mix signal (never a live LinkedIn
 scrape -- see `worker/README.md`'s ToS note), and an LLM-synthesized
 summary + AI-maturity read. Written to Twenty as one `EnrichmentJob` record
-per run, plus `Company.lastEnrichedAt`. No paid enrichment provider is used
-or assumed. See `worker/README.md`'s "Company Enrichment" section for the
-full breakdown and API surface (`POST /companies/{id}/enrich`,
+per run, plus `Company.lastEnrichedAt`. Optionally supplemented with real
+firmographic data from Apollo.io and/or People Data Labs if you configure
+an API key for either. See `worker/README.md`'s "Company Enrichment"
+section for the full breakdown -- both the crawl-based signals and the
+optional paid-provider layer -- and API surface (`POST /companies/{id}/enrich`,
 `POST /enrichment/jobs`, plus an opt-in daily auto-enrichment scheduler).
 
 ## What's NOT connected to anything yet
 
-`ICPScore` and `Company.latestIcpScore`/`latestIcpPriority` are now written to (see "AI Outbound Messaging (Phase 6) & ICP Scoring" above) -- this section previously said they weren't; that's the one thing this update to the doc corrects rather than leaving as a historical note, since an unqualified "nothing writes to it" claim would now be actively wrong rather than just outdated. What's still genuinely not connected: no paid enrichment/intent-data provider (Clearbit, Apollo, People Data Labs, etc.) backs any of Company Enrichment's signals -- they're keyword/proxy-based throughout, by design (see "Phase 4" above and `worker/README.md`'s ToS notes) -- and no live LinkedIn API integration exists anywhere in this repo, including in AI Outbound Messaging, which deliberately never automates LinkedIn sending for that reason.
+`ICPScore` and `Company.latestIcpScore`/`latestIcpPriority` **are** now written to — see "AI Outbound Messaging (Phase 6) & ICP Scoring" above. Company Enrichment's crawl-based signals can now optionally be supplemented by real firmographic data too: `enrichment/providers/` adds Apollo.io and People Data Labs adapters (both real, self-serve REST APIs) that fold employee-count/industry/revenue/tech-stack data into the same `EnrichmentResult` when you configure `APOLLO_API_KEY` and/or `PDL_API_KEY` — see `worker/README.md`'s "Company Enrichment" section. No Clearbit adapter, deliberately: HubSpot folded it into Breeze Intelligence (HubSpot-only, credit-based) and cut off standalone API access for new customers in 2025, so there's no self-serve key to wire up. What's still genuinely not connected: no live LinkedIn API integration exists anywhere in this repo, and none is planned — see "AI Outbound Messaging" above for the ToS reasoning, which applies here too.
 

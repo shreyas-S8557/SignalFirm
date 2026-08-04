@@ -281,11 +281,25 @@ LinkedIn's own official APIs under a partnership agreement, which would
 slot in as a new `provider` value in `EnrichmentResult` if it's ever
 available, rather than requiring a different pipeline.
 
-**No paid data provider is used or assumed** (Clearbit, Apollo, People Data
-Labs, etc.) — everything above comes from the company's own public site or
-data already in this workspace. `EnrichmentJob.provider` stays a free-text
-field specifically so a paid provider can be added later as a second
-`provider` value without a schema change.
+**Optional paid data providers** (see `enrichment/providers/`) — Apollo.io and
+People Data Labs both have real, self-serve REST APIs and can supplement
+the crawl-based signals above with real employee-count/industry/revenue/
+tech-stack data: set `APOLLO_API_KEY` and/or `PDL_API_KEY` and the next
+enrichment run picks it up automatically, folded into the same
+`EnrichmentResult` (merged tech stack, a firmographics paragraph appended
+to the summary, `EnrichmentJob.provider` gaining a `+apollo`/
+`+people_data_labs` suffix). Neither key set (the default) means
+enrichment behaves exactly as described above — everything from the
+company's own public site or data already in this workspace. Deliberately
+no Clearbit adapter: HubSpot acquired Clearbit and folded it into Breeze
+Intelligence, a HubSpot-only, credit-based feature — standalone API access
+was cut off for non-HubSpot customers in 2025, so there's no self-serve key
+a deployer of this codebase could actually obtain to use it (see
+`enrichment/providers/__init__.py` for the full explanation). Provider
+field-name mappings are documented inline in `enrichment/providers/apollo.py`
+and `people_data_labs.py` and read defensively (`.get()` throughout), since
+both vendors' response schemas can shift between plans and API versions —
+worth a spot-check against a live response from your own account.
 
 To run enrichment automatically rather than triggering it yourself, start
 the scheduler process (opt-in — disabled by default):
@@ -368,7 +382,7 @@ What I could **not** verify here, for lack of network/a live Twenty instance: th
 
 - The Recommendation Engine never auto-sends anything and never writes back into Twenty — it only reads Person/Company/ConversationSignal data and produces a digest, the same "draft for a human to review" boundary Conversation Intelligence draws around `recommendedReplyDraft`. AI Outbound Messaging (see above) drafts real send-ready copy, but sending itself keeps that same human-in-the-loop boundary for every channel except opt-in email.
 - It also doesn't prioritize cold, never-contacted prospects — see its scope note above.
-- Company Enrichment has no paid data provider (Clearbit, Apollo, People Data Labs, etc.) and no live LinkedIn integration — see the ToS note in "Company Enrichment" above. "Buying signals" and "growth indicators" are keyword/proxy-based, not sourced from a real intent-data or headcount-tracking provider.
+- Company Enrichment's crawl-based signals ("buying signals," "growth indicators") stay keyword/proxy-based, not sourced from a real intent-data or headcount-tracking provider — but optional Apollo/People Data Labs adapters (see "Company Enrichment" above) now supply real firmographic data (employee count, industry, revenue, tech stack) when you configure an API key for either. No live LinkedIn integration exists, and none is planned — see the ToS note in "Company Enrichment" above for why that's a deliberate boundary, not a gap waiting on an API key.
 - Company Enrichment's website crawl is a handful of well-known paths (home/about/careers/blog), not a general crawler — companies whose relevant content lives elsewhere (a separate careers site, a PDF, a gated blog) will get a thin or `PARTIAL` result.
 - Workflow Automation now automates Import → Enrichment → Research → ICP Scoring → Outreach Drafting. `workflow/engine.py::advance()` still never fakes progress past what it can actually do — a company sits at `OUTREACH_DRAFTED` until a human (or the opt-in email auto-send) actually sends something, since sending is the one step this milestone deliberately keeps manual for every channel except email.
 - Research pain points and sales angles are **hypotheses, not findings** — labelled as such in the prompt, the models, the CRM field descriptions, and the rendered output. They're a starting point for a human to validate on a call, never something to assert to a prospect as known fact.

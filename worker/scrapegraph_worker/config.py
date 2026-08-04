@@ -196,6 +196,35 @@ class OutboundSettings:
 
 
 @dataclass(frozen=True)
+class DataProviderSettings:
+    """Config for the optional paid firmographic-data layer (see
+    enrichment/providers/). Both keys are empty by default -- enrichment
+    behaves exactly as it did before this existed until you set one.
+    Deliberately no Clearbit setting: standalone Clearbit API access was
+    cut off for new customers when HubSpot folded it into Breeze
+    Intelligence (HubSpot-only, credit-based) -- see
+    enrichment/providers/__init__.py for the full explanation.
+    """
+
+    apollo_api_key: str = field(default_factory=lambda: os.getenv("APOLLO_API_KEY", ""))
+    people_data_labs_api_key: str = field(default_factory=lambda: os.getenv("PDL_API_KEY", ""))
+    timeout_seconds: float = field(default_factory=lambda: float(os.getenv("DATA_PROVIDER_TIMEOUT_SECONDS", "15")))
+    # Try providers in this order, first match wins. Reorder via
+    # DATA_PROVIDER_PRIORITY (comma-separated) if you'd rather try PDL
+    # first, e.g. because your Apollo plan doesn't include organization
+    # enrichment.
+    priority: tuple[str, ...] = field(
+        default_factory=lambda: tuple(
+            p.strip() for p in os.getenv("DATA_PROVIDER_PRIORITY", "apollo,people_data_labs").split(",") if p.strip()
+        )
+    )
+
+    @property
+    def any_configured(self) -> bool:
+        return bool(self.apollo_api_key or self.people_data_labs_api_key)
+
+
+@dataclass(frozen=True)
 class QueueSettings:
     redis_url: str = field(default_factory=lambda: os.getenv("REDIS_URL", "redis://localhost:6379/0"))
     queue_name: str = field(default_factory=lambda: os.getenv("SCRAPE_QUEUE_NAME", "scrapegraph-jobs"))
@@ -211,6 +240,7 @@ class WorkerSettings:
     enrichment_schedule: EnrichmentScheduleSettings = field(default_factory=EnrichmentScheduleSettings)
     workflow: WorkflowSettings = field(default_factory=WorkflowSettings)
     outbound: OutboundSettings = field(default_factory=OutboundSettings)
+    data_providers: DataProviderSettings = field(default_factory=DataProviderSettings)
     queue: QueueSettings = field(default_factory=QueueSettings)
     # Where job state (progress, logs, counts) is persisted for the /jobs API.
     # SQLite is enough for a single-instance worker; swap for Postgres by
