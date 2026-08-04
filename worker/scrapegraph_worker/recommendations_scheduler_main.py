@@ -24,12 +24,13 @@ import sys
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 from .config import load_settings
+from .observability import configure_logging
 from .recommendations.delivery import deliver_digest
 from .recommendations.engine import build_daily_digest
 from .recommendations.render import render_markdown
 from .twenty_client import TwentyClient
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+configure_logging()  # Phase 9 -- structured logging + optional Sentry, see observability.py
 logger = logging.getLogger(__name__)
 
 

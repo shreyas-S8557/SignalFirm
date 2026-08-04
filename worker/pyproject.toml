@@ -1,0 +1,24 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# Deliberately narrow: this codebase predates ruff, and the goal of adding
+# it in Phase 9 is catching real bugs in CI (undefined names, unused
+# imports, obvious logic errors) -- not a wholesale style rewrite of ~10k
+# existing lines, which is its own separate, reviewable change if the team
+# wants it. Widen this list incrementally rather than turning on ALL/E/W
+# and drowning CI in pre-existing style findings on day one.
+select = [
+    "E9",   # syntax errors
+    "F",    # pyflakes: undefined names, unused imports, etc
+    "B",    # flake8-bugbear: common bug patterns (mutable defaults, etc)
+]
+ignore = [
+    "F401",  # unused-import -- several modules intentionally import for
+             # re-export (e.g. package __init__.py files); revisit per-module
+             # later rather than blanket-failing CI on this now.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F811"]

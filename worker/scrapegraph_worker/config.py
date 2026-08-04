@@ -111,6 +111,91 @@ class DigestSettings:
 
 
 @dataclass(frozen=True)
+class EnrichmentScheduleSettings:
+    """Config for `enrichment_scheduler_main.py`'s automatic-enrichment
+    sweep (Phase 4's "Automatic execution" requirement). Mirrors
+    `DigestSettings`' shape -- a schedule time plus a batch-size cap so an
+    unattended run can't try to enrich thousands of companies in one pass.
+    """
+
+    enabled: bool = field(default_factory=lambda: _env_bool("ENRICHMENT_SCHEDULE_ENABLED", False))
+    schedule_hour: int = field(default_factory=lambda: int(os.getenv("ENRICHMENT_SCHEDULE_HOUR", "3")))
+    schedule_minute: int = field(default_factory=lambda: int(os.getenv("ENRICHMENT_SCHEDULE_MINUTE", "0")))
+    timezone: str = field(default_factory=lambda: os.getenv("ENRICHMENT_TIMEZONE", "UTC"))
+    # A company is considered due for (re-)enrichment if it has never been
+    # enriched, or its lastEnrichedAt is older than this many days.
+    stale_after_days: int = field(default_factory=lambda: int(os.getenv("ENRICHMENT_STALE_AFTER_DAYS", "30")))
+    # Cap per scheduled run -- keeps one sweep from crawling the entire
+    # workspace's companies in a single pass.
+    max_companies_per_run: int = field(default_factory=lambda: int(os.getenv("ENRICHMENT_MAX_PER_RUN", "50")))
+
+
+@dataclass(frozen=True)
+class WorkflowSettings:
+    """Config for Phase 7 (Workflow Automation) -- see
+    scrapegraph_worker/workflow/. Off by default for the same reason
+    ENRICHMENT_SCHEDULE_ENABLED is: chaining a website crawl onto every
+    single import is a bigger footprint than this service's other
+    defaults, so it's opt-in.
+    """
+
+    auto_enrich_on_import: bool = field(default_factory=lambda: _env_bool("AUTO_ENRICH_ON_IMPORT", False))
+    # Phase 5: chain Enrichment -> Research automatically too. Only has an
+    # effect when auto_enrich_on_import is also on (research requires
+    # enrichment as grounding -- see research/engine.py) and when an LLM is
+    # configured. Separate flag rather than folded into the one above
+    # because research costs LLM tokens per company, which enrichment
+    # (crawl + optional LLM summary) largely doesn't.
+    auto_research_after_enrichment: bool = field(
+        default_factory=lambda: _env_bool("AUTO_RESEARCH_AFTER_ENRICHMENT", False)
+    )
+
+
+@dataclass(frozen=True)
+class OutboundSettings:
+    """Config for Phase 6 -- AI Outbound Messaging (see outbound/). Drafting
+    itself always runs through the same LLMSettings as Conversation
+    Intelligence/Research; these are specific to identifying the sender in
+    generated copy and to the one channel this package can actually send on
+    (email) -- see outbound/send/ for why LinkedIn never gets a "sending"
+    config at all.
+    """
+
+    sender_name: str = field(default_factory=lambda: os.getenv("OUTBOUND_SENDER_NAME", "our team"))
+    sender_company: str = field(default_factory=lambda: os.getenv("OUTBOUND_SENDER_COMPANY", "our company"))
+    product_one_liner: str = field(default_factory=lambda: os.getenv("OUTBOUND_PRODUCT_ONE_LINER", ""))
+
+    # SMTP for the one automatable send channel (email). Separate from
+    # DigestSettings' SMTP block on purpose -- the daily digest and
+    # prospect-facing outbound mail often go through different
+    # accounts/domains (e.g. a no-reply digest address vs. a rep's own
+    # sending domain with SPF/DKIM set up for deliverability).
+    smtp_host: str = field(default_factory=lambda: os.getenv("OUTBOUND_SMTP_HOST", ""))
+    smtp_port: int = field(default_factory=lambda: int(os.getenv("OUTBOUND_SMTP_PORT", "587")))
+    smtp_user: str = field(default_factory=lambda: os.getenv("OUTBOUND_SMTP_USER", ""))
+    smtp_password: str = field(default_factory=lambda: os.getenv("OUTBOUND_SMTP_PASSWORD", ""))
+    smtp_from: str = field(default_factory=lambda: os.getenv("OUTBOUND_SMTP_FROM", ""))
+    smtp_use_tls: bool = field(default_factory=lambda: _env_bool("OUTBOUND_SMTP_USE_TLS", True))
+
+    # Off by default -- drafting always happens automatically once a
+    # company reaches PENDING_OUTREACH_DRAFT, but actually emailing a
+    # prospect is a bigger step than drafting, so it stays opt-in even
+    # though (unlike LinkedIn) there's a fully compliant path to automate
+    # it. LinkedIn/call steps in a sequence are always
+    # QUEUED_FOR_MANUAL_SEND regardless of this flag -- see
+    # outbound/send/linkedin_adapter.py.
+    auto_send_email: bool = field(default_factory=lambda: _env_bool("OUTBOUND_AUTO_SEND_EMAIL", False))
+    dry_run: bool = field(default_factory=lambda: _env_bool("OUTBOUND_DRY_RUN", True))
+
+    # Safety cap mirroring EnrichmentScheduleSettings.max_companies_per_run
+    # -- how many due follow-up steps outbound_scheduler_main.py's sweep
+    # will process in one run.
+    max_sequence_steps_per_run: int = field(
+        default_factory=lambda: int(os.getenv("OUTBOUND_MAX_SEQUENCE_STEPS_PER_RUN", "50"))
+    )
+
+
+@dataclass(frozen=True)
 class QueueSettings:
     redis_url: str = field(default_factory=lambda: os.getenv("REDIS_URL", "redis://localhost:6379/0"))
     queue_name: str = field(default_factory=lambda: os.getenv("SCRAPE_QUEUE_NAME", "scrapegraph-jobs"))
@@ -123,12 +208,38 @@ class WorkerSettings:
     twenty: TwentySettings = field(default_factory=TwentySettings)
     llm: LLMSettings = field(default_factory=LLMSettings)
     digest: DigestSettings = field(default_factory=DigestSettings)
+    enrichment_schedule: EnrichmentScheduleSettings = field(default_factory=EnrichmentScheduleSettings)
+    workflow: WorkflowSettings = field(default_factory=WorkflowSettings)
+    outbound: OutboundSettings = field(default_factory=OutboundSettings)
     queue: QueueSettings = field(default_factory=QueueSettings)
     # Where job state (progress, logs, counts) is persisted for the /jobs API.
     # SQLite is enough for a single-instance worker; swap for Postgres by
     # changing this URL if the worker is ever scaled horizontally.
     job_store_url: str = field(default_factory=lambda: os.getenv("JOB_STORE_URL", "sqlite:///./scrapegraph_jobs.db"))
     dry_run: bool = field(default_factory=lambda: _env_bool("SCRAPE_DRY_RUN", False))
+    # Phase 8 -- optional shared-secret check on the read/action endpoints
+    # Twenty's app-side proxy logic-functions call (see
+    # ../twenty-app/src/logic-functions/worker-*-proxy.ts). Empty by
+    # default -- same "wide open by default, tighten via a settings field"
+    # philosophy api.py's CORS comment already documents, since the Phase 9
+    # standalone frontend hits these same endpoints directly and shouldn't
+    # break for anyone who hasn't set this up. When set, callers must send
+    # a matching `X-Api-Key` header. This is defense-in-depth on top of
+    # (not a replacement for) the primary access control, which is that
+    # the Twenty-side proxy routes require an authenticated Twenty user
+    # session (`isAuthRequired: true`) before they ever reach this service.
+    worker_api_key: str = field(default_factory=lambda: os.getenv("WORKER_API_KEY", ""))
+
+    # Phase 9 -- in-process rate limiting (see observability.py::
+    # RateLimitMiddleware). Defaults generous enough not to interfere with
+    # normal use (batch enrichment sweeps, the frontend polling /jobs) while
+    # still stopping a runaway client/script from hammering the service.
+    # Set RATE_LIMIT_MAX_REQUESTS=0 to disable entirely (e.g. if a fronting
+    # proxy/gateway already rate-limits and you don't want double-limiting).
+    rate_limit_max_requests: int = field(default_factory=lambda: int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "120")))
+    rate_limit_window_seconds: float = field(
+        default_factory=lambda: float(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
+    )
 
 
 def load_settings() -> WorkerSettings:

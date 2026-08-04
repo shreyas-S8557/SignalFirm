@@ -52,6 +52,7 @@ class JobStage(str, Enum):
     SCRAPING = "SCRAPING"
     DEDUPING = "DEDUPING"
     SYNCING = "SYNCING"
+    ENRICHING = "ENRICHING"  # Phase 4: batch company-enrichment jobs (see jobs.py::run_enrichment_job)
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
 

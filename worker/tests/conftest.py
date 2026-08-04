@@ -22,7 +22,9 @@ class FakeTwentyClient:
         self.notes: dict[str, dict] = {}
         self.note_targets: list[dict] = []
         self.research_jobs: dict[str, dict] = {}
+        self.icp_scores: dict[str, dict] = {}
         self.conversation_signals: dict[str, dict] = {}
+        self.enrichment_jobs: dict[str, dict] = {}
         self.calls: list[tuple] = []
 
     def _new_id(self) -> str:
@@ -34,6 +36,19 @@ class FakeTwentyClient:
         self, object_name_plural, *, filter_query=None, search_query=None, limit=25, depth=0, order_by=None
     ):
         self.calls.append(("find_records", object_name_plural, filter_query))
+
+        if object_name_plural == "noteTargets":
+            # note_targets is a list, not an id-keyed dict store (see
+            # create_record's special case below) -- filter it directly
+            # rather than going through _store_for.
+            results = list(self.note_targets)
+            if filter_query:
+                field, rest = filter_query.split("[", 1)
+                op, value = rest.split("]:", 1)
+                value = value.strip("%").strip('"')
+                results = [r for r in results if op == "eq" and str(r.get(field)) == value]
+            return results[:limit]
+
         store = self._store_for(object_name_plural)
         if store is None:
             return []
@@ -63,6 +78,13 @@ class FakeTwentyClient:
             results = sorted(results, key=lambda r: _get_path(r, field) or "", reverse=desc)
 
         return results[:limit]
+
+    def get_record(self, object_name_plural, record_id, *, depth=0):
+        self.calls.append(("get_record", object_name_plural, record_id))
+        store = self._store_for(object_name_plural)
+        if store is None:
+            return None
+        return store.get(record_id)
 
     def create_record(self, object_name_plural, fields):
         self.calls.append(("create_record", object_name_plural, fields))
@@ -105,7 +127,9 @@ class FakeTwentyClient:
             "opportunities": self.opportunities,
             "notes": self.notes,
             "researchJobs": self.research_jobs,
+            "icpScores": self.icp_scores,
             "conversationSignals": self.conversation_signals,
+            "enrichmentJobs": self.enrichment_jobs,
         }.get(object_name_plural)
 
 

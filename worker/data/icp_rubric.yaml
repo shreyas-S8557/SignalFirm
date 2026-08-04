@@ -1,0 +1,110 @@
+# Default ICP (Ideal Customer Profile) rubric.
+#
+# Tune this file to fit your actual ICP -- nothing here is hardcoded into
+# scrapegraph_worker/icp/rubric.py, which only knows how to *apply* whatever
+# rubric it's handed. Bump `version` any time you change weights or target
+# lists in a way that would make old ICPScore records not comparable to new
+# ones -- it's written onto every ICPScore record (`rubricVersion`) so a
+# score can always be traced back to the rubric that produced it.
+#
+# Every `weight` is in points out of 100 and the six weights below sum to
+# 100. If you add/remove/reweight criteria, keep them summing to 100 (the
+# engine does not renormalize for you -- a rubric that sums to 80 produces
+# scores that top out at 80, which is a silent bug, not a feature).
+version: "2026-08-v1"
+
+weights:
+  industry_fit: 20
+  company_size_fit: 15
+  buying_signal_strength: 20
+  tech_stack_fit: 15
+  ai_maturity_fit: 15
+  research_richness: 15
+
+# Case-insensitive substring match against Company.industry (whatever free
+# text the scrape pipeline / a human populated there).
+industry_fit:
+  target_industries:
+    - "software"
+    - "saas"
+    - "technology"
+    - "fintech"
+    - "healthtech"
+    - "e-commerce"
+    - "ecommerce"
+    - "marketing"
+    - "data"
+    - "ai"
+  # A hit here caps this criterion's contribution at 0, regardless of any
+  # target_industries substring also matching -- e.g. "government software"
+  # should not score as a software-industry fit.
+  disqualifying_industries:
+    - "government"
+    - "nonprofit"
+    - "non-profit"
+    - "religious"
+
+# `synced_people_count` (see enrichment/models.py::GrowthIndicators) is a
+# proxy for company size, not a real headcount -- see that model's own
+# docstring for why. Banded rather than linear because a proxy this noisy
+# doesn't deserve more precision than "too small / sweet spot / too big to
+# self-serve."
+company_size_fit:
+  too_small_below: 3
+  sweet_spot_min: 5
+  sweet_spot_max: 200
+  large_account_above: 500
+  large_account_fraction: 0.6  # large accounts still get partial credit, not zero
+
+# Buying-signal and hiring-signal counts (from EnrichmentJob) saturate this
+# criterion's full weight rather than scaling forever -- five buying-signal
+# hits is already a strong indicator, twenty isn't proportionally stronger.
+buying_signal_strength:
+  buying_signal_saturation_count: 5
+  hiring_signal_saturation_count: 3
+  buying_signal_share: 0.7  # of this criterion's weight
+  hiring_signal_share: 0.3
+
+# Substring match (case-insensitive) against the comma-separated tech stack
+# string EnrichmentJob.techStack carries.
+tech_stack_fit:
+  complementary_tech:
+    - "hubspot"
+    - "salesforce"
+    - "segment"
+    - "marketo"
+    - "intercom"
+    - "zendesk"
+    - "stripe"
+  # Signals they already run something that directly competes with what
+  # you're selling -- caps this criterion low even if complementary_tech
+  # also matched.
+  competitor_tech: []
+
+# AI_maturity_fit rewards companies already experimenting (a live buyer for
+# an AI-powered product) over ones showing no AI signal at all or already
+# fully built out (less likely to need outside help). Tune to your product.
+ai_maturity_fit:
+  scores:
+    ADVANCED: 0.7
+    ADOPTING: 1.0
+    EXPLORING: 0.85
+    NONE_OBSERVED: 0.3
+    UNKNOWN: 0.4
+
+# How much usable material the (optional) Research pass produced --
+# pain-point/sales-angle hypotheses and the research pass's own confidence.
+# A company that hasn't been researched yet still gets scored (this
+# criterion just contributes 0 for it), since ICP fit is meant to run
+# right after Research completes, not gate on a second pass.
+research_richness:
+  pain_point_saturation_count: 3
+  sales_angle_saturation_count: 2
+  pain_point_share: 0.4
+  sales_angle_share: 0.3
+  research_confidence_share: 0.3
+
+# score >= high_threshold -> HIGH, >= medium_threshold -> MEDIUM, else LOW.
+priority_thresholds:
+  high: 70
+  medium: 40

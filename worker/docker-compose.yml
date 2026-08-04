@@ -30,6 +30,19 @@ services:
     depends_on:
       - redis
 
+  enrichment-scheduler:
+    build: .
+    command: python -m scrapegraph_worker.enrichment_scheduler_main
+    env_file: .env
+    # No-ops immediately unless ENRICHMENT_SCHEDULE_ENABLED=true (see
+    # .env.example) -- an unattended crawl sweep is opt-in. When enabled,
+    # sweeps companies due for enrichment at ENRICHMENT_SCHEDULE_HOUR:
+    # ENRICHMENT_SCHEDULE_MINUTE every day. Doesn't touch Redis/the scrape
+    # queue -- it enriches in-process on its own schedule, same as
+    # recommendations-scheduler below -- so no `depends_on` here either.
+    volumes:
+      - ./scrapegraph_jobs.db:/app/scrapegraph_jobs.db
+
   recommendations-scheduler:
     build: .
     command: python -m scrapegraph_worker.recommendations_scheduler_main
@@ -44,3 +57,14 @@ services:
       # DIGEST_SLACK_WEBHOOK_URL is set (see recommendations/delivery.py) --
       # mounted so that fallback case is still visible on the host.
       - ./daily_digest.md:/app/daily_digest.md
+
+  outbound-scheduler:
+    build: .
+    command: python -m scrapegraph_worker.outbound_scheduler_main
+    env_file: .env
+    # Daily sweep for due follow-up-sequence steps (see outbound/sequence.py
+    # and outbound_scheduler_main.py's own docstring). Sends real email only
+    # if OUTBOUND_AUTO_SEND_EMAIL=true; every other channel is always
+    # queued for a human regardless of this container running.
+    volumes:
+      - ./scrapegraph_jobs.db:/app/scrapegraph_jobs.db

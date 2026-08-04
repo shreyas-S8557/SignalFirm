@@ -21,6 +21,28 @@ export const RESEARCH_JOB_COMPANY_FIELD_UNIVERSAL_IDENTIFIER =
   '68f17db9-17fd-4863-b12c-95898fabc278';
 export const COMPANY_RESEARCH_JOBS_FIELD_UNIVERSAL_IDENTIFIER =
   'aebd95f4-033a-4f19-bad6-350cc53b04b0';
+// -- ResearchJob AI-research fields (Phase 5: Research Automation) -------
+// The research pass extends this same object's lifecycle (adding
+// RESEARCHING / RESEARCHED statuses) rather than introducing a parallel
+// object -- exactly as research-job.object.ts's original comment planned,
+// so a company's import -> enrichment -> research history reads as one
+// timeline. Written by worker/scrapegraph_worker/research/engine.py.
+export const RESEARCH_JOB_SUMMARY_FIELD_UNIVERSAL_IDENTIFIER =
+  'a9e795f0-95d3-4ce4-8b86-14b47581626b';
+export const RESEARCH_JOB_PAIN_POINTS_FIELD_UNIVERSAL_IDENTIFIER =
+  '7a3f41d9-71c5-4a8f-b729-bd73dcb7d396';
+export const RESEARCH_JOB_SALES_ANGLES_FIELD_UNIVERSAL_IDENTIFIER =
+  '6e4f8e19-85e1-46a0-a8a9-f0bf3491d30f';
+export const RESEARCH_JOB_BUYING_SIGNALS_FIELD_UNIVERSAL_IDENTIFIER =
+  '8908e329-ea9f-4579-8b7c-c31be0754b5a';
+export const RESEARCH_JOB_CONFIDENCE_FIELD_UNIVERSAL_IDENTIFIER =
+  '3a734c6c-08ea-4331-93a0-60d7da1dd14f';
+export const RESEARCH_JOB_MODEL_USED_FIELD_UNIVERSAL_IDENTIFIER =
+  'c284203d-ec5f-4bbe-9f12-07d104dab83b';
+export const RESEARCH_JOB_ERROR_FIELD_UNIVERSAL_IDENTIFIER =
+  '503653fe-029e-481d-963e-fd14589fb67b';
+export const RESEARCH_JOB_GROUNDING_FIELD_UNIVERSAL_IDENTIFIER =
+  '6ea70254-bef4-43b6-9bb2-c7db842c10f9';
 
 // -- EnrichmentJob --------------------------------------------------------
 export const ENRICHMENT_JOB_OBJECT_UNIVERSAL_IDENTIFIER =
@@ -37,6 +59,24 @@ export const ENRICHMENT_JOB_COMPANY_FIELD_UNIVERSAL_IDENTIFIER =
   'eaa51a2e-b7bf-4d68-a83d-8b6c3a229d1b';
 export const COMPANY_ENRICHMENT_JOBS_FIELD_UNIVERSAL_IDENTIFIER =
   '3271f094-5682-45ad-b906-ea1f6ca71f97';
+// -- EnrichmentJob content fields (Phase 4: Company Enrichment) ----------
+// Added once the enrichment engine (worker/scrapegraph_worker/enrichment/)
+// actually started writing results, rather than at scaffold time -- see
+// that module's README for what populates each of these.
+export const ENRICHMENT_JOB_SUMMARY_FIELD_UNIVERSAL_IDENTIFIER =
+  '2956333e-9510-49e7-8bb8-fd72711937ef';
+export const ENRICHMENT_JOB_TECH_STACK_FIELD_UNIVERSAL_IDENTIFIER =
+  '6cc2c9d5-a463-43de-9a6e-7baac66b7695';
+export const ENRICHMENT_JOB_HIRING_SIGNALS_FIELD_UNIVERSAL_IDENTIFIER =
+  '3df220c7-7fb6-4428-9f83-ae5ebe05727f';
+export const ENRICHMENT_JOB_BUYING_SIGNALS_FIELD_UNIVERSAL_IDENTIFIER =
+  '5af0391a-aa78-477a-9055-5eb2eafecef3';
+export const ENRICHMENT_JOB_GROWTH_INDICATORS_FIELD_UNIVERSAL_IDENTIFIER =
+  '70ad1c1f-999b-447f-a537-ad8fbaa77c12';
+export const ENRICHMENT_JOB_AI_MATURITY_FIELD_UNIVERSAL_IDENTIFIER =
+  '4773355e-d648-4dc2-b15c-40494b71d371';
+export const ENRICHMENT_JOB_SOURCES_CHECKED_FIELD_UNIVERSAL_IDENTIFIER =
+  '37b90b09-458d-4267-8aef-536d495e9e57';
 
 // -- ICPScore --------------------------------------------------------
 export const ICP_SCORE_OBJECT_UNIVERSAL_IDENTIFIER =
@@ -124,3 +164,53 @@ export const REPLY_INTELLIGENCE_TRIGGER_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
 // ConversationSignal record (+ denormalized Person fields).
 export const CONVERSATION_SIGNAL_WEBHOOK_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
   'aa585acb-0e55-4b88-aef0-e4e12eb7d830';
+
+// -- Phase 8: Twenty Frontend Integration --------------------------------
+// Server-side proxy routes: front components (browser-executed, can't hold
+// secrets) call these; these forward to the worker service server-to-server,
+// attaching CRM_SYNC_WORKER_API_KEY if configured. See src/lib/worker-proxy.ts.
+export const WORKER_READ_PROXY_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  '4bd2c42e-4ccf-45d2-8505-3d26b9d429d9';
+export const WORKER_DAILY_DIGEST_PROXY_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  'e9a1aa26-f60e-4722-998a-6f658f49a8f8';
+export const WORKER_ACTION_PROXY_LOGIC_FUNCTION_UNIVERSAL_IDENTIFIER =
+  '9d6d69f5-d803-4c9b-bf09-6ded31421e0a';
+
+// Front components (React, rendered inside Twenty's own UI via Remote DOM).
+export const AI_INSIGHTS_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  '8d698f88-c28e-4be4-a5a4-1ac813b6d5e9';
+export const RESEARCH_TAB_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  'e0123549-ee56-4f15-9cda-c4cc04b38f8e';
+export const CONVERSATION_PANEL_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  '0be672c8-3bfc-4c71-88a8-01eece18b4d8';
+export const RECOMMENDATIONS_WIDGET_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER =
+  'c8b9a271-181b-4a19-a00f-5349cd8d9541';
+
+// Page layout tabs added onto Twenty's *standard* Company/Person record
+// pages (see page-layouts/*.ts -- COMPANY_RECORD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER
+// and PERSON_RECORD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER there are placeholders
+// that must be filled in per-workspace; see that file's comment).
+export const COMPANY_AI_INSIGHTS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER =
+  '9341955e-50df-43f6-b5da-4340e2a8bad2';
+export const COMPANY_AI_INSIGHTS_TAB_WIDGET_UNIVERSAL_IDENTIFIER =
+  '64f26e01-f86b-4b2f-ab9c-2b960d3770d2';
+export const COMPANY_RESEARCH_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER =
+  '45b0203c-b2bf-4a39-a454-8b9de384b9ad';
+export const COMPANY_RESEARCH_TAB_WIDGET_UNIVERSAL_IDENTIFIER =
+  '9116217d-70e6-4035-89f1-0715efc8473f';
+export const PERSON_CONVERSATION_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER =
+  '7a43088c-5dc7-4ce6-8f47-089753c3c4cb';
+export const PERSON_CONVERSATION_TAB_WIDGET_UNIVERSAL_IDENTIFIER =
+  '0ec439c5-51a5-4a73-aa08-7c67f6d7e954';
+
+// A standalone (not record-scoped) dashboard page for the Recommendation
+// Engine's daily digest, plus its own navigation item -- this app owns this
+// entire layout (unlike the tabs above, which extend standard layouts).
+export const RECOMMENDATIONS_STANDALONE_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER =
+  '49152598-fc9e-4965-8253-5e2e130b82fd';
+export const RECOMMENDATIONS_PAGE_TAB_UNIVERSAL_IDENTIFIER =
+  '061d53b0-c169-4c6b-85bc-e919daf1fce7';
+export const RECOMMENDATIONS_PAGE_TAB_WIDGET_UNIVERSAL_IDENTIFIER =
+  '7cbc0a0a-60b6-4da0-89d2-9761daccb897';
+export const RECOMMENDATIONS_NAVIGATION_ITEM_UNIVERSAL_IDENTIFIER =
+  '7c03aded-97a0-4cbc-88cd-6066edbac59a';

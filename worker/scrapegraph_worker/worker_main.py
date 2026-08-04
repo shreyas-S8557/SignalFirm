@@ -16,8 +16,9 @@ from redis import Redis
 from rq import Worker
 
 from .config import load_settings
+from .observability import configure_logging
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+configure_logging()  # Phase 9 -- structured logging + optional Sentry, see observability.py
 
 
 def main() -> int:

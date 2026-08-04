@@ -1,0 +1,182 @@
+# Production compose file -- Phase 9.
+#
+# Differences from the dev docker-compose.yml, deliberately:
+#   - No bind-mount of source (`./scrapegraph_worker`) -- the image is
+#     built once and run as an immutable artifact, same as any other
+#     container deploy. Rebuild + redeploy on every release instead.
+#   - No `${SCRAPEGRAPH_REPO_PATH}` mount -- the Scrapegraph CLI checkout
+#     that scrape_adapter.py shells out to is expected to be baked into a
+#     custom image built FROM this one (or otherwise made available), not
+#     bind-mounted from a host path -- a host path is meaningless on
+#     whatever orchestrator ends up running this (see this file's own
+#     "not a deploy target" note below).
+#   - No host ports published except through the `reverse-proxy` stub --
+#     nothing here should be reachable directly from the internet. Put a
+#     real TLS-terminating reverse proxy (nginx/Caddy/Traefik, or your
+#     cloud LB) in front, matching the placeholder service below.
+#   - `restart: unless-stopped`, healthchecks wired to /health and
+#     /health/ready (see scrapegraph_worker/observability.py), log
+#     rotation, and conservative resource limits on every service.
+#   - Redis is given a persistence volume and its own healthcheck --
+#     losing the RQ queue's contents on a restart is a worse failure mode
+#     in production than in dev.
+#
+# This file is a solid *starting point* for a single-host deployment
+# (systemd + docker compose on one VM, or as a template translated into
+# k8s manifests/Helm/ECS task defs) -- it is NOT a decision about where
+# you actually deploy. That's an infra choice this codebase can't make for
+# you (see worker/README.md's Production Readiness section).
+#
+# Secrets: every *_API_KEY / *_PASSWORD / *_SECRET value below is read
+# from the environment via `${VAR:?err}` (fails fast if unset) rather than
+# committed anywhere, including in this file or .env.example. In a real
+# deployment, prefer your platform's secret store (Docker/Swarm secrets,
+# k8s Secrets, SSM Parameter Store, etc) over a plain `.env` file on disk.
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    logging: &default-logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  api:
+    build: .
+    image: opika-crm-sync-worker:${IMAGE_TAG:-latest}
+    command: >
+      uvicorn scrapegraph_worker.api:app --host 0.0.0.0 --port 8000
+      --workers ${API_WORKERS:-2} --proxy-headers --forwarded-allow-ips='*'
+    env_file: .env
+    environment:
+      LOG_FORMAT: json
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    # No `ports:` -- reachable only via the reverse-proxy service below
+    # (or your platform's own ingress/LB) inside the compose network.
+
+  worker:
+    build: .
+    image: opika-crm-sync-worker:${IMAGE_TAG:-latest}
+    command: python -m scrapegraph_worker.worker_main
+    env_file: .env
+    environment:
+      LOG_FORMAT: json
+    # The Dockerfile's baked-in HEALTHCHECK assumes an HTTP server on
+    # :8000 (true for `api`, not for this process) -- disabled here rather
+    # than left to report a false "unhealthy" forever.
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      replicas: ${WORKER_REPLICAS:-1}
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  enrichment-scheduler:
+    build: .
+    image: opika-crm-sync-worker:${IMAGE_TAG:-latest}
+    command: python -m scrapegraph_worker.enrichment_scheduler_main
+    healthcheck:
+      disable: true
+    env_file: .env
+    environment:
+      LOG_FORMAT: json
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  recommendations-scheduler:
+    build: .
+    image: opika-crm-sync-worker:${IMAGE_TAG:-latest}
+    command: python -m scrapegraph_worker.recommendations_scheduler_main
+    healthcheck:
+      disable: true
+    env_file: .env
+    environment:
+      LOG_FORMAT: json
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  outbound-scheduler:
+    build: .
+    image: opika-crm-sync-worker:${IMAGE_TAG:-latest}
+    command: python -m scrapegraph_worker.outbound_scheduler_main
+    healthcheck:
+      disable: true
+    env_file: .env
+    environment:
+      LOG_FORMAT: json
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # Placeholder for a real TLS-terminating reverse proxy -- swap the image
+  # for Caddy/Traefik/nginx with your own domain + cert config, or delete
+  # this service entirely if your platform (a cloud LB, k8s Ingress, etc)
+  # already terminates TLS in front of the `api` service. Ships commented
+  # out because there's no safe default certificate/domain to assume.
+  #
+  # reverse-proxy:
+  #   image: caddy:2-alpine
+  #   ports:
+  #     - "443:443"
+  #     - "80:80"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile:ro
+  #     - caddy-data:/data
+  #   depends_on:
+  #     - api
+  #   restart: unless-stopped
+
+volumes:
+  redis-data:
+  # caddy-data:
