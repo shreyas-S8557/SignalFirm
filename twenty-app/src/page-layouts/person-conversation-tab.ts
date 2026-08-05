@@ -1,4 +1,4 @@
-import { definePageLayoutTab, PageLayoutTabLayoutMode } from 'twenty-sdk/define';
+import { definePageLayoutTab, STANDARD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIERS } from 'twenty-sdk/define';
 
 import {
   PERSON_CONVERSATION_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
@@ -6,18 +6,15 @@ import {
   CONVERSATION_PANEL_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER,
 } from 'src/constants/universal-identifiers';
 
-// Same placeholder pattern as company-ai-insights-tab.ts, targeting the
-// standard Person record page instead of Company -- look this one up
-// separately, it's a different layout.
-const PERSON_RECORD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER = 'REPLACE_WITH_YOUR_WORKSPACE_PERSON_RECORD_PAGE_LAYOUT_ID';
-
+// Same fix as company-ai-insights-tab.ts, targeting the standard Person
+// record page instead of Company via the SDK's fixed standard identifiers.
 export default definePageLayoutTab({
   universalIdentifier: PERSON_CONVERSATION_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
-  pageLayoutUniversalIdentifier: PERSON_RECORD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER,
+  pageLayoutUniversalIdentifier: STANDARD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIERS.personRecordPage.universalIdentifier,
   title: 'Conversation',
   position: 900,
   icon: 'IconMessageCircle',
-  layoutMode: PageLayoutTabLayoutMode.CANVAS,
+  // layoutMode CANVAS is deprecated in 2.27 -- see company-ai-insights-tab.ts.
   widgets: [
     {
       universalIdentifier: PERSON_CONVERSATION_TAB_WIDGET_UNIVERSAL_IDENTIFIER,

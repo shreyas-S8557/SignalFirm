@@ -1,4 +1,4 @@
-import { defineObject, FieldType, ObjectOpenRecordIn } from 'twenty-sdk/define';
+import { defineObject, FieldType, NumberDataType, ObjectOpenRecordIn } from 'twenty-sdk/define';
 
 import {
   CONVERSATION_SIGNAL_OBJECT_UNIVERSAL_IDENTIFIER,
@@ -180,9 +180,9 @@ export default defineObject({
       label: 'Confidence',
       icon: 'IconGauge',
       description: '0-1. Clamped and validated by the worker -- never trusted verbatim from the LLM.',
-      universalSettings: { dataType: 'float' },
+      universalSettings: { dataType: NumberDataType.FLOAT },
       isNullable: false,
-      defaultValue: '0',
+      defaultValue: 0,
     },
     {
       universalIdentifier: CONVERSATION_SIGNAL_SOURCE_MESSAGE_ID_FIELD_UNIVERSAL_IDENTIFIER,

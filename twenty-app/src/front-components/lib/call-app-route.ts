@@ -35,7 +35,10 @@ export class AppRouteError extends Error {
 export const callAppRoute = async <T = unknown>(method: 'GET' | 'POST', path: string): Promise<T> => {
   let response: Response;
   try {
-    response = await fetch(`${APP_ROUTE_BASE_PATH}${path}`, { method });
+    const baseUrl = "http://localhost:2020";
+    response = await fetch(`${baseUrl}${APP_ROUTE_BASE_PATH}${path}`, {
+    method,
+});
   } catch (error) {
     throw new AppRouteError(0, `Network error calling ${path}: ${(error as Error).message}`);
   }

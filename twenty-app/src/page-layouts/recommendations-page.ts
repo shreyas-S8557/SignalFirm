@@ -1,4 +1,4 @@
-import { definePageLayout, PageLayoutTabLayoutMode } from 'twenty-sdk/define';
+import { definePageLayout } from 'twenty-sdk/define';
 
 import {
   RECOMMENDATIONS_STANDALONE_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER,
@@ -8,25 +8,17 @@ import {
 } from 'src/constants/universal-identifiers';
 
 /**
- * Unlike the three company-*/person-conversation tab files (which extend
- * a *standard* Twenty layout via definePageLayoutTab), this app owns this
- * entire layout -- a workspace-wide dashboard isn't scoped to any one
- * object's record page, so definePageLayout with type STANDALONE_PAGE is
- * the right entity here (per docs.twenty.com/developers/extend/apps/layout:
- * "Use definePageLayout when you own the entire layout (typically a
- * RECORD_PAGE for an object you ship in your app, or a STANDALONE_PAGE)").
+ * Unlike the three company/person tab files (which extend a *standard*
+ * Twenty layout via definePageLayoutTab), this app owns this entire
+ * layout -- a workspace-wide dashboard isn't scoped to any one object's
+ * record page, so definePageLayout with type STANDALONE_PAGE is the
+ * right entity here.
  *
- * KNOWN GAP: this page has no sidebar navigation item wired up yet. The
- * docs mention navigation items exist as their own entity type
- * ("Views, navigation items, and page layouts reference each other by
- * universalIdentifier"), but I could not find or verify the exact
- * `defineNavigationItem`-style API surface for it without a live
- * workspace to check against, and would rather leave this as an
- * explicit, documented gap than ship a guessed function signature that
- * might not even type-check. Until that's added, this page is reachable
- * by its direct URL once the app is synced (check your workspace's
- * developer/app settings for the generated route) rather than from the
- * sidebar.
+ * The sidebar navigation item for this page lives in
+ * src/navigation-items/recommendations-navigation-item.ts, using
+ * defineNavigationMenuItem (Twenty SDK 2.27) with
+ * type: NavigationMenuItemType.PAGE_LAYOUT, pointed at this layout's
+ * universalIdentifier.
  */
 
 export default definePageLayout({
@@ -39,7 +31,9 @@ export default definePageLayout({
       title: 'Recommendations',
       position: 0,
       icon: 'IconBulb',
-      layoutMode: PageLayoutTabLayoutMode.CANVAS,
+      // layoutMode PageLayoutTabLayoutMode.CANVAS is deprecated in 2.27 --
+      // a solo full-page widget tab like this one no longer declares a
+      // layoutMode; presentation is derived from the tab's widgets.
       widgets: [
         {
           universalIdentifier: RECOMMENDATIONS_PAGE_TAB_WIDGET_UNIVERSAL_IDENTIFIER,

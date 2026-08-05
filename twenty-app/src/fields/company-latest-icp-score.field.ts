@@ -1,4 +1,4 @@
-import { defineField, FieldType, STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS } from 'twenty-sdk/define';
+import { defineField, FieldType, NumberDataType, STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS } from 'twenty-sdk/define';
 
 import { COMPANY_LATEST_ICP_SCORE_FIELD_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 
@@ -16,6 +16,6 @@ export default defineField({
   name: 'latestIcpScore',
   label: 'ICP Score',
   icon: 'IconGauge',
-  universalSettings: { dataType: 'float' },
+  universalSettings: { dataType: NumberDataType.FLOAT },
   isNullable: true,
 });

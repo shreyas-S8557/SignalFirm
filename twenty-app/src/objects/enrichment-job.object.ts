@@ -1,4 +1,4 @@
-import { defineObject, FieldType, ObjectOpenRecordIn } from 'twenty-sdk/define';
+import { defineObject, FieldType, NumberDataType, ObjectOpenRecordIn } from 'twenty-sdk/define';
 
 import {
   ENRICHMENT_JOB_OBJECT_UNIVERSAL_IDENTIFIER,
@@ -86,9 +86,9 @@ export default defineObject({
       label: 'Confidence',
       icon: 'IconGauge',
       description: '0-1. Never defaulted to a high value -- must be set explicitly by whatever writes this record.',
-      universalSettings: { dataType: 'float' },
+      universalSettings: { dataType: NumberDataType.FLOAT },
       isNullable: false,
-      defaultValue: '0',
+      defaultValue: 0,
     },
     {
       universalIdentifier: ENRICHMENT_JOB_ERROR_FIELD_UNIVERSAL_IDENTIFIER,

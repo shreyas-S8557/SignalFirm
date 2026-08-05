@@ -214,3 +214,20 @@ export const RECOMMENDATIONS_PAGE_TAB_WIDGET_UNIVERSAL_IDENTIFIER =
   '7cbc0a0a-60b6-4da0-89d2-9761daccb897';
 export const RECOMMENDATIONS_NAVIGATION_ITEM_UNIVERSAL_IDENTIFIER =
   '7c03aded-97a0-4cbc-88cd-6066edbac59a';
+
+// -- Application role (Twenty SDK 2.27 migration) -------------------------
+// `defaultRoleUniversalIdentifier` on defineApplication() is deprecated as
+// of 2.27 -- the SDK now requires a role file marked with
+// defineApplicationRole() instead (see src/roles/crm-sync-default.role.ts).
+// This was previously a non-UUID slug ('crm-sync-default-role'), which is
+// invalid -- every universalIdentifier must be a UUID v4+ (validated by the
+// CLI). Regenerated as a proper UUID; since this role was never actually
+// synced before (no role file referenced it), there is no existing-install
+// identity to preserve.
+export const APPLICATION_ROLE_UNIVERSAL_IDENTIFIER =
+  'f247e920-704d-4c40-a3b5-36645097e823';
+
+// Navigation item wiring for the standalone Recommendations page -- see
+// page-layouts/recommendations-page.ts's former "KNOWN GAP" comment. Kept
+// here alongside its page's other identifiers for consistency with the
+// rest of this file.

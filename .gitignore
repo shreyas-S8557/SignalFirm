@@ -1,0 +1,39 @@
+# Node
+node_modules/
+**/node_modules/
+
+# Yarn
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/patches
+!.yarn/sdks
+!.yarn/versions
+
+# Build
+dist/
+build/
+coverage/
+
+# Twenty generated output
+.twenty/
+**/.twenty/
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+.env
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log

@@ -1,4 +1,4 @@
-import { defineObject, FieldType, ObjectOpenRecordIn } from 'twenty-sdk/define';
+import { defineObject, FieldType, NumberDataType, ObjectOpenRecordIn } from 'twenty-sdk/define';
 
 import {
   RESEARCH_JOB_OBJECT_UNIVERSAL_IDENTIFIER,
@@ -140,7 +140,7 @@ export default defineObject({
       icon: 'IconGauge',
       description:
         '0-1, computed deterministically from how much grounding material the run actually had -- never the LLM-emitted number taken at face value.',
-      universalSettings: { dataType: 'float' },
+      universalSettings: { dataType: NumberDataType.FLOAT },
       isNullable: true,
     },
     {

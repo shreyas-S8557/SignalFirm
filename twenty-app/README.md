@@ -1,5 +1,14 @@
 # CRM Sync (Scrapegraph) — Twenty App
 
+## Troubleshooting: `ERR_REQUIRE_ESM` on `yarn twenty dev` / `deb`
+
+If `yarn twenty dev` fails with `Error [ERR_REQUIRE_ESM]` pointing at `uuid/dist-node/index.js` being required from inside `twenty-sdk`, it's a Node/dependency mismatch, not a bug in this app's code:
+
+- `twenty-sdk` does a synchronous `require('uuid')` internally, and `uuid@13.x` ships as a pure-ESM package with no CommonJS build. Loading that synchronously only works on Node builds with stable `require(esm)` support (Node ≥20.19.0 or ≥22.12.0, fully stable as of Node 24 — see `.nvmrc` / `engines.node` above).
+- This repo now pins `"resolutions": { "uuid": "^11.1.0" }` in `package.json`, which forces every dependency (including `twenty-sdk`) onto a `uuid` version that still ships a real CommonJS build (`dist/cjs/index.js`) behind its `require` export condition. That makes `require('uuid')` work with plain, synchronous CJS loading on any modern Node — no `require(esm)` needed at all. Verified directly against the real `twenty-sdk@2.27.0` package.
+- If you still hit this after pulling the pin, delete `.yarn/cache` and `.yarn/install-state.gz` and re-run `yarn install` so Yarn's PnP resolution picks up the override, then confirm with `node -v` that you're on the version in `.nvmrc`.
+
+
 Custom-object data model for the Scrapegraph → Twenty integration, plus (as of Phase 8) native UI panels embedded in Twenty's own record pages. Declares:
 
 - **`ResearchJob`** (`/rest/researchJobs`) — one record per scrape-to-CRM sync attempt. Written by `../worker/scrapegraph_worker/sync.py`.

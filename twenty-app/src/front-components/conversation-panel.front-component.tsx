@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { defineFrontComponent } from 'twenty-sdk/define';
-import { useRecordId } from 'twenty-sdk/front-component';
+import { useSelectedRecordIds } from 'twenty-sdk/front-component';
 import { enqueueSnackbar } from 'twenty-sdk/front-component';
 
 import { CONVERSATION_PANEL_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
@@ -34,7 +34,9 @@ type ConversationSignal = {
 };
 
 const ConversationPanel = () => {
-  const personId = useRecordId();
+  // useRecordId() is deprecated in SDK 2.27 -- see ai-insights-panel's comment.
+  const selectedRecordIds = useSelectedRecordIds();
+  const personId = selectedRecordIds.length === 1 ? selectedRecordIds[0] : null;
   const [signals, setSignals] = useState<ConversationSignal[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

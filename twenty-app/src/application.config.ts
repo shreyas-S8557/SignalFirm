@@ -4,7 +4,7 @@ import { APPLICATION_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identi
 
 export default defineApplication({
   universalIdentifier: APPLICATION_UNIVERSAL_IDENTIFIER,
-  displayName: 'CRM Sync (Scrapegraph)',
+  displayName: 'CRM Sync (SignalFirm)',
   description:
     'Data-plumbing layer for the Scrapegraph -> Twenty integration: custom ' +
     'objects for research/enrichment jobs, ICP scores, and conversation ' +
@@ -12,9 +12,12 @@ export default defineApplication({
     'service uses to exchange job progress and reply analysis. No AI logic ' +
     'lives in this app -- all LLM calls happen in the worker service (see ' +
     'worker/scrapegraph_worker/conversation/).',
-  author: 'Opika',
+  author: 'Opika.co',
   category: 'Sales',
-  logoUrl: 'public/logo.svg',
+  // `logoUrl` is deprecated in SDK 2.27 (use `logo`, referencing an image
+  // bundled under public/) and pointed at a public/logo.svg that doesn't
+  // exist in this repo -- removed rather than carried forward broken.
+  // Add `logo: 'public/logo.svg'` once that asset actually exists.
   websiteUrl: 'https://docs.twenty.com/developers/extend/apps/getting-started',
   termsUrl: '',
   emailSupport: '',

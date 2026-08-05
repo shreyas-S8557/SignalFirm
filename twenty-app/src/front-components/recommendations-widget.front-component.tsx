@@ -9,7 +9,7 @@ import { callAppRoute, AppRouteError } from 'src/front-components/lib/call-app-r
  * Embeds the standalone frontend's "Recommendations Widget" as a native
  * dashboard page: today's Contact Today / Monitor / Ignore buckets from
  * the Recommendation Engine (`GET /recommendations/daily-digest`), via
- * worker-daily-digest-proxy.ts. Not record-scoped (no useRecordId) --
+ * worker-daily-digest-proxy.ts. Not record-scoped (no useSelectedRecordIds) --
  * this is workspace-wide, same as the digest itself.
  *
  * Read-only, same as the standalone version: this never sends anything.

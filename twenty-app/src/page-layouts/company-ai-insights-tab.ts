@@ -1,4 +1,4 @@
-import { definePageLayoutTab, PageLayoutTabLayoutMode } from 'twenty-sdk/define';
+import { definePageLayoutTab, STANDARD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIERS } from 'twenty-sdk/define';
 
 import {
   COMPANY_AI_INSIGHTS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
@@ -7,28 +7,22 @@ import {
 } from 'src/constants/universal-identifiers';
 
 /**
- * NEEDS A REAL VALUE BEFORE THIS APP CAN BE SYNCED: `definePageLayoutTab`
- * requires `pageLayoutUniversalIdentifier` to point at an *existing* page
- * layout at install time (Twenty's docs: "installation fails with a clear
- * validation error" if it doesn't resolve) -- this is the standard Company
- * record page's own universalIdentifier, and Twenty's docs show it looked
- * up per-workspace/version rather than a fixed constant exported by the
- * SDK (see docs.twenty.com/developers/extend/apps/layout's own example,
- * which hardcodes a value the same way rather than importing one). I could
- * not verify this value against a live Twenty instance in this sandbox --
- * find yours via `yarn twenty entity:list` (or your workspace's Data
- * Model settings -> Company -> record page) and replace the placeholder
- * below before running `yarn twenty app:dev` / `app:publish`.
+ * Twenty SDK 2.27 now exports STANDARD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIERS,
+ * a fixed set of universalIdentifiers for every built-in page layout
+ * (the same value on every workspace/version), so the standard Company
+ * record page no longer needs to be looked up or hardcoded per-workspace
+ * as the previous SDK required.
  */
-const COMPANY_RECORD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER = 'REPLACE_WITH_YOUR_WORKSPACE_COMPANY_RECORD_PAGE_LAYOUT_ID';
-
 export default definePageLayoutTab({
   universalIdentifier: COMPANY_AI_INSIGHTS_PAGE_LAYOUT_TAB_UNIVERSAL_IDENTIFIER,
-  pageLayoutUniversalIdentifier: COMPANY_RECORD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER,
+  pageLayoutUniversalIdentifier: STANDARD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIERS.companyRecordPage.universalIdentifier,
   title: 'AI Insights',
   position: 900, // late in the tab order -- after Twenty's own built-in tabs
   icon: 'IconSparkles',
-  layoutMode: PageLayoutTabLayoutMode.CANVAS,
+  // layoutMode: PageLayoutTabLayoutMode.CANVAS is deprecated in 2.27 -- a
+  // single full-page front-component tab like this one no longer declares
+  // a layoutMode at all; presentation (solo vs stack) is now derived from
+  // the tab's widgets.
   widgets: [
     {
       universalIdentifier: COMPANY_AI_INSIGHTS_TAB_WIDGET_UNIVERSAL_IDENTIFIER,

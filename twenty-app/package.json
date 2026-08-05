@@ -9,19 +9,31 @@
     "yarn": ">=4.0.2",
     "twenty": ">=2.19.0"
   },
-  "keywords": ["twenty-app"],
+  "keywords": [
+    "twenty-app"
+  ],
   "packageManager": "yarn@4.13.0",
   "scripts": {
-    "twenty": "twenty",
+    "twenty": "node ./scripts/twenty-cli.cjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run"
   },
-  "dependencies": {},
   "devDependencies": {
     "@types/node": "^24.7.2",
-    "twenty-client-sdk": "^2.23.0",
-    "twenty-sdk": "^2.23.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "twenty-client-sdk": "2.27.0",
+    "twenty-sdk": "2.27.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.0"
+  },
+  "resolutions": {
+    "uuid": "^11.1.0",
+    "chalk": "^4.1.2",
+    "inquirer": "^8.2.6"
+  },
+  "dependencies": {
+    "@sniptt/guards": "^0.2.0",
+    "uuid": "^14.0.1"
   }
 }

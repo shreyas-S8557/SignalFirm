@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { defineFrontComponent } from 'twenty-sdk/define';
-import { useRecordId } from 'twenty-sdk/front-component';
+import { useSelectedRecordIds } from 'twenty-sdk/front-component';
 
 import { AI_INSIGHTS_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 import { callAppRoute, AppRouteError } from 'src/front-components/lib/call-app-route';
@@ -44,7 +44,12 @@ type WorkflowState = {
 };
 
 const AiInsightsPanel = () => {
-  const companyId = useRecordId();
+  // useRecordId() is deprecated in SDK 2.27 in favor of
+  // useSelectedRecordIds(); this tab only ever renders for a single
+  // selected record, so we derive the single id the same way the
+  // deprecation notice recommends.
+  const selectedRecordIds = useSelectedRecordIds();
+  const companyId = selectedRecordIds.length === 1 ? selectedRecordIds[0] : null;
 
   const [insights, setInsights] = useState<CompanyInsights | null>(null);
   const [workflow, setWorkflow] = useState<WorkflowState | null>(null);

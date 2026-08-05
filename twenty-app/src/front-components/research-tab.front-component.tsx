@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { defineFrontComponent } from 'twenty-sdk/define';
-import { useRecordId } from 'twenty-sdk/front-component';
+import { useSelectedRecordIds } from 'twenty-sdk/front-component';
 
 import { RESEARCH_TAB_FRONT_COMPONENT_UNIVERSAL_IDENTIFIER } from 'src/constants/universal-identifiers';
 import { callAppRoute, AppRouteError } from 'src/front-components/lib/call-app-route';
@@ -48,7 +48,9 @@ type TimelineEntry = {
 };
 
 const ResearchTab = () => {
-  const companyId = useRecordId();
+  // useRecordId() is deprecated in SDK 2.27 -- see ai-insights-panel's comment.
+  const selectedRecordIds = useSelectedRecordIds();
+  const companyId = selectedRecordIds.length === 1 ? selectedRecordIds[0] : null;
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [latestResearch, setLatestResearch] = useState<ResearchJob | null>(null);
   const [error, setError] = useState<string | null>(null);

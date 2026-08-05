@@ -1,4 +1,4 @@
-import { defineObject, FieldType, ObjectOpenRecordIn } from 'twenty-sdk/define';
+import { defineObject, FieldType, NumberDataType, ObjectOpenRecordIn } from 'twenty-sdk/define';
 
 import {
   ICP_SCORE_OBJECT_UNIVERSAL_IDENTIFIER,
@@ -40,9 +40,9 @@ export default defineObject({
       label: 'Score',
       icon: 'IconGauge',
       description: '0-100, computed deterministically from the rubric weights -- never an LLM-emitted number directly.',
-      universalSettings: { dataType: 'float' },
+      universalSettings: { dataType: NumberDataType.FLOAT },
       isNullable: false,
-      defaultValue: '0',
+      defaultValue: 0,
     },
     {
       universalIdentifier: ICP_SCORE_PRIORITY_FIELD_UNIVERSAL_IDENTIFIER,
@@ -71,9 +71,9 @@ export default defineObject({
       type: FieldType.NUMBER,
       label: 'Confidence',
       icon: 'IconGauge',
-      universalSettings: { dataType: 'float' },
+      universalSettings: { dataType: NumberDataType.FLOAT },
       isNullable: false,
-      defaultValue: '0',
+      defaultValue: 0,
     },
     {
       universalIdentifier: ICP_SCORE_RUBRIC_VERSION_FIELD_UNIVERSAL_IDENTIFIER,
