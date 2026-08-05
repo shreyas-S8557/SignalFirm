@@ -30,6 +30,10 @@ A shared secret + two URLs, used in **both directions**:
 
 Worker → Twenty was the whole integration surface originally (job progress). Conversation Intelligence added the reverse direction (Twenty → worker, to hand off a reply for analysis) and reuses the same shared secret rather than introducing a second one — so it's still one secret to keep in sync, just checked on both sides now instead of one. Everything else each side does is independent — `worker/` talks to Twenty's ordinary REST API (Companies/People/Opportunities/Notes) with a plain API key, not through `twenty-app` at all.
 
+## Connector fixes (`fixed-connectors`)
+
+Local bring-up against current Twenty REST + Scrapegraph uncovered several integration bugs (RQ `job_id`, note `bodyV2` / morph noteTargets, response unwrapping, Docker/Python for Scrapegraph, Twenty 429s). Full problem → cause → fix write-up: [`docs/FIXED_CONNECTORS.md`](./docs/FIXED_CONNECTORS.md).
+
 ## Deploy order
 
 1. **`twenty-app/`** — copy into your Twenty monorepo, `yarn twenty dev`, confirm the four custom objects appear under Settings → Data model, set the shared secret and `CONVERSATION_WORKER_BASE_URL`. Full steps: [`twenty-app/README.md`](./twenty-app/README.md).
