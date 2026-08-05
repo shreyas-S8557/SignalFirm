@@ -15,11 +15,20 @@ responses into a single exception type the rest of the worker can catch.
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import Any, Iterable, Optional
 
 import httpx
 
 from .config import TwentySettings
+
+logger = logging.getLogger(__name__)
+
+# Twenty's default API rate limit is ~100 tokens / 60s. Bulk scrape sync
+# exceeds that quickly; retry on 429 instead of failing every lead.
+_MAX_RETRIES = 6
+_RETRYABLE = {429, 502, 503, 504}
 
 
 class TwentyAPIError(RuntimeError):
@@ -58,18 +67,47 @@ class TwentyClient:
     # -- low-level helpers ---------------------------------------------
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
-        response = self._http.request(method, path, **kwargs)
-        if response.status_code >= 400:
-            try:
-                payload = response.json()
-                message = payload.get("messages", [payload]) if isinstance(payload, dict) else payload
-            except ValueError:
-                payload = response.text
-                message = payload
-            raise TwentyAPIError(response.status_code, str(message), payload)
-        if response.status_code == 204 or not response.content:
-            return None
-        return response.json()
+        last_error: Optional[TwentyAPIError] = None
+        for attempt in range(_MAX_RETRIES):
+            response = self._http.request(method, path, **kwargs)
+            if response.status_code in _RETRYABLE:
+                # Prefer Retry-After when present; otherwise exponential backoff.
+                retry_after = response.headers.get("Retry-After")
+                try:
+                    delay = float(retry_after) if retry_after else min(2 ** attempt, 30)
+                except ValueError:
+                    delay = min(2 ** attempt, 30)
+                logger.warning(
+                    "Twenty %s %s -> %s; retry %s/%s in %.1fs",
+                    method,
+                    path,
+                    response.status_code,
+                    attempt + 1,
+                    _MAX_RETRIES,
+                    delay,
+                )
+                time.sleep(delay)
+                try:
+                    payload = response.json()
+                    message = payload.get("messages", [payload]) if isinstance(payload, dict) else payload
+                except ValueError:
+                    payload = response.text
+                    message = payload
+                last_error = TwentyAPIError(response.status_code, str(message), payload)
+                continue
+            if response.status_code >= 400:
+                try:
+                    payload = response.json()
+                    message = payload.get("messages", [payload]) if isinstance(payload, dict) else payload
+                except ValueError:
+                    payload = response.text
+                    message = payload
+                raise TwentyAPIError(response.status_code, str(message), payload)
+            if response.status_code == 204 or not response.content:
+                return None
+            return response.json()
+        assert last_error is not None
+        raise last_error
 
     # -- generic record CRUD ---------------------------------------------
 
@@ -108,17 +146,17 @@ class TwentyClient:
             if exc.status_code == 404:
                 return None
             raise
-        return data.get("data", {}).get(object_name_plural[:-1] if object_name_plural.endswith("s") else object_name_plural) if data else None
+        return data.get("data", {}).get(_singular(object_name_plural)) if data else None
 
     def create_record(self, object_name_plural: str, fields: dict) -> dict:
         object_name_singular = _singular(object_name_plural)
         data = self._request("POST", f"/rest/{object_name_plural}", json=fields)
-        return data["data"][object_name_singular]
+        return _unwrap_mutation_payload(data.get("data") or {}, "create", object_name_singular)
 
     def update_record(self, object_name_plural: str, record_id: str, fields: dict) -> dict:
         object_name_singular = _singular(object_name_plural)
         data = self._request("PATCH", f"/rest/{object_name_plural}/{record_id}", json=fields)
-        return data["data"][object_name_singular]
+        return _unwrap_mutation_payload(data.get("data") or {}, "update", object_name_singular)
 
     def create_records_batch(self, object_name_plural: str, records: list[dict]) -> list[dict]:
         """Create up to `settings.max_batch_size` records in one call."""
@@ -153,14 +191,40 @@ class TwentyClient:
 
 
 def _singular(name_plural: str) -> str:
-    # Matches Twenty's own convention: strip a trailing "s". Objects with
-    # irregular plurals (namePlural explicitly set, e.g. "people") must be
-    # special-cased here if/when they come up.
-    if name_plural == "people":
-        return "person"
+    # Matches Twenty's REST mutation/query payload keys. Irregular plurals
+    # must be listed -- naive "strip trailing s" turns companies -> companie.
+    irregular = {
+        "people": "person",
+        "companies": "company",
+        "opportunities": "opportunity",
+        "researchJobs": "researchJob",
+        "enrichmentJobs": "enrichmentJob",
+        "icpScores": "icpScore",
+        "conversationSignals": "conversationSignal",
+        "noteTargets": "noteTarget",
+    }
+    if name_plural in irregular:
+        return irregular[name_plural]
+    if name_plural.endswith("ies"):
+        return name_plural[:-3] + "y"
     if name_plural.endswith("s"):
         return name_plural[:-1]
     return name_plural
+
+
+def _mutation_payload_key(action: str, singular: str) -> str:
+    # Twenty Core REST returns createCompany / updatePerson / etc.
+    return f"{action}{singular[:1].upper()}{singular[1:]}"
+
+
+def _unwrap_mutation_payload(payload: dict, action: str, singular: str) -> dict:
+    for key in (_mutation_payload_key(action, singular), singular):
+        if key in payload:
+            return payload[key]
+    raise KeyError(
+        f"Twenty {action} response missing expected keys "
+        f"{_mutation_payload_key(action, singular)!r}/{singular!r}; got {list(payload)}"
+    )
 
 
 def _escape_filter(value: str) -> str:

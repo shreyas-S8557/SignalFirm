@@ -157,5 +157,5 @@ def test_draft_outreach_writes_note_and_targets(fake_client, monkeypatch):
     assert result.person_id == person["id"]
     assert result.note_id is not None
     assert len(fake_client.notes) == 1
-    assert any(t.get("companyId") == company["id"] for t in fake_client.note_targets)
-    assert any(t.get("personId") == person["id"] for t in fake_client.note_targets)
+    assert any(t.get("targetCompanyId") == company["id"] for t in fake_client.note_targets)
+    assert any(t.get("targetPersonId") == person["id"] for t in fake_client.note_targets)

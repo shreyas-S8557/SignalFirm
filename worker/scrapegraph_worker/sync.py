@@ -238,13 +238,16 @@ def _create_activity_note(
     body_lines = [f"Imported via Scrapegraph (source: {lead.source})."]
     if lead.summary:
         body_lines.append(lead.summary)
-    note = client.create_record("notes", {"title": "Scrapegraph import", "body": "\n\n".join(body_lines)})
+    # Twenty notes use RICH_TEXT bodyV2 (markdown), not a plain "body" field.
+    note = client.create_record(
+        "notes",
+        {"title": "Scrapegraph import", "bodyV2": {"markdown": "\n\n".join(body_lines)}},
+    )
     note_id = note["id"]
-    # Attach the note to the company (and person, if we have one) via
-    # Twenty's noteTargets join object.
-    client.create_record("noteTargets", {"noteId": note_id, "companyId": company_id})
+    # Attach via morph relation IDs (targetCompanyId / targetPersonId).
+    client.create_record("noteTargets", {"noteId": note_id, "targetCompanyId": company_id})
     if person_id:
-        client.create_record("noteTargets", {"noteId": note_id, "personId": person_id})
+        client.create_record("noteTargets", {"noteId": note_id, "targetPersonId": person_id})
     return note_id
 
 

@@ -112,7 +112,7 @@ def test_derive_state_outreach_drafted_and_blocked_pending_human_send(fake_clien
         {"score": 72, "priority": "HIGH", "company": {"id": company["id"]}, "createdAt": "2026-08-03T00:00:00Z"},
     )
     note = fake_client.create_record("notes", {"title": "AI Outreach Draft - Acme", "body": "..."})
-    fake_client.create_record("noteTargets", {"noteId": note["id"], "companyId": company["id"]})
+    fake_client.create_record("noteTargets", {"noteId": note["id"], "targetCompanyId": company["id"]})
 
     state = derive_workflow_state(fake_client, company["id"])
     assert state.stage == WorkflowStage.OUTREACH_DRAFTED
@@ -243,7 +243,7 @@ def test_advance_is_no_op_when_outreach_drafted(fake_client):
         {"score": 72, "priority": "HIGH", "company": {"id": company["id"]}, "createdAt": "2026-08-03T00:00:00Z"},
     )
     note = fake_client.create_record("notes", {"title": "AI Outreach Draft - Acme", "body": "..."})
-    fake_client.create_record("noteTargets", {"noteId": note["id"], "companyId": company["id"]})
+    fake_client.create_record("noteTargets", {"noteId": note["id"], "targetCompanyId": company["id"]})
 
     result = advance(fake_client, company["id"], llm_settings=_LLM)
 

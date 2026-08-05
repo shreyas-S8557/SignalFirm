@@ -195,11 +195,11 @@ def _write_draft_note(client, result: OutboundMessageSet, *, company: dict, pers
     title = f"AI Outreach Draft - {company_name}"
 
     try:
-        note = client.create_record("notes", {"title": title, "body": body})
+        note = client.create_record("notes", {"title": title, "bodyV2": {"markdown": body}})
         note_id = note["id"]
-        client.create_record("noteTargets", {"noteId": note_id, "companyId": company["id"]})
+        client.create_record("noteTargets", {"noteId": note_id, "targetCompanyId": company["id"]})
         if person:
-            client.create_record("noteTargets", {"noteId": note_id, "personId": person["id"]})
+            client.create_record("noteTargets", {"noteId": note_id, "targetPersonId": person["id"]})
         return note_id
     except TwentyAPIError:
         logger.warning("Could not write outreach draft Note for company %s", result.company_id)

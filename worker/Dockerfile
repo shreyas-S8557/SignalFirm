@@ -1,9 +1,14 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Scrapegraph CLI (mounted at /scrapegraph) needs 3.12+ plus collector extras
+# and Chromium. First build is large/slow — expected (Playwright + browser).
+RUN pip install --no-cache-dir "scrapegraphai[collector]" \
+    && playwright install --with-deps chromium
 
 COPY scrapegraph_worker/ ./scrapegraph_worker/
 COPY data/ ./data/

@@ -192,7 +192,15 @@ def _find_outreach_notes(client: TwentyClient, company_id: str) -> list[dict]:
     matched = []
     for note in notes:
         targets = note.get("noteTargets") or []
-        if any((t.get("companyId") == company_id or (t.get("company") or {}).get("id") == company_id) for t in targets):
+        if any(
+            (
+                t.get("targetCompanyId") == company_id
+                or t.get("companyId") == company_id
+                or (t.get("targetCompany") or {}).get("id") == company_id
+                or (t.get("company") or {}).get("id") == company_id
+            )
+            for t in targets
+        ):
             matched.append(note)
     if matched:
         return matched
@@ -205,7 +213,7 @@ def _find_outreach_notes(client: TwentyClient, company_id: str) -> list[dict]:
 
 def _find_outreach_notes_via_note_targets(client: TwentyClient, company_id: str) -> list[dict]:
     note_targets = client.find_records(
-        "noteTargets", filter_query=f"companyId[eq]:{company_id}", limit=50, depth=0
+        "noteTargets", filter_query=f"targetCompanyId[eq]:{company_id}", limit=50, depth=0
     )
     note_ids = {t.get("noteId") for t in note_targets if t.get("noteId")}
     if not note_ids:

@@ -13,12 +13,12 @@ in-process import of `pipeline.orchestrator.run_pipeline`. Two reasons:
    internals, which matches "convert into a background worker" rather than
    "rebuild the scraper."
 
-NOTE on naming: the CPA-firm collection entrypoint in the current repo is
-`scripts/collect_us_angel_investors_1000.py` (its output path and comments
-say CPA firms; the filename is a holdover from an earlier dataset). This is
-flagged as technical debt in the architecture analysis (§2.2) -- worth
-renaming, but not blocking. `SCRAPEGRAPH_ENTRYPOINT` below is intentionally
-configurable so a rename doesn't require code changes here.
+NOTE on naming: the entrypoint is `scripts/collect_us_angel_investors_1000.py`
+and its default CSV is `data/us_angel_investors_1000.csv` (see
+`scripts/pipeline/config.py::OUTPUT`). Older docs/adapters referred to a
+CPA-partners filename; that path is wrong for the current pipeline.
+`SCRAPEGRAPH_ENTRYPOINT` is configurable so a rename doesn't require code
+changes here.
 """
 
 from __future__ import annotations
@@ -81,7 +81,7 @@ def run_scrape_phase(
             f"stderr:\n{result.stderr[-4000:]}"
         )
 
-    resolved_output = Path(output_csv) if output_csv else (repo / "data" / "us_cpa_partners_1000.csv")
+    resolved_output = Path(output_csv) if output_csv else (repo / "data" / "us_angel_investors_1000.csv")
     if not resolved_output.exists():
         raise ScrapeSubprocessError(f"Scrapegraph pipeline reported success but {resolved_output} does not exist")
     return resolved_output

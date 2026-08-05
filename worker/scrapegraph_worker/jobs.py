@@ -52,13 +52,17 @@ def enqueue_import_job(
         )
     )
     queue = get_queue(settings)
+    # job_id must be positional: RQ reserves the job_id= kwarg for the Redis
+    # job id itself, so passing only job_id= silently drops it from the
+    # function call (TypeError: missing required argument 'job_id').
     queue.enqueue(
         run_import_job,
-        job_id=job_id,
+        job_id,
         repo_path=repo_path,
         target=target,
         phases=phases,
         job_timeout=settings.queue.job_timeout_seconds,
+        job_id=job_id,
         retry=None,  # explicit retry handled at the RQ Retry layer by callers if desired
     )
     return job_id
@@ -190,11 +194,13 @@ def enqueue_enrichment_job(
         )
     )
     queue = get_queue(settings)
+    # See enqueue_import_job: job_id positional + job_id= for RQ's Redis id.
     queue.enqueue(
         run_enrichment_job,
-        job_id=job_id,
+        job_id,
         company_ids=company_ids,
         job_timeout=settings.queue.job_timeout_seconds,
+        job_id=job_id,
         retry=None,
     )
     return job_id
