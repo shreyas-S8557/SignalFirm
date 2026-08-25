@@ -495,7 +495,7 @@ __metadata:
     twenty-client-sdk: "npm:2.27.0"
     twenty-sdk: "npm:2.27.0"
     typescript: "npm:^5.9.3"
-    uuid: "npm:^14.0.1"
+    uuid: "npm:^14.0.2"
     vitest: "npm:^4.0.0"
   languageName: unknown
   linkType: soft
