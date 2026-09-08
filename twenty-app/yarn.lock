@@ -492,7 +492,7 @@ __metadata:
     "@types/node": "npm:^24.7.2"
     "@types/react": "npm:^19.2.0"
     "@types/react-dom": "npm:^19.2.0"
-    twenty-client-sdk: "npm:2.27.0"
+    twenty-client-sdk: "npm:2.38.0"
     twenty-sdk: "npm:2.27.0"
     typescript: "npm:^5.9.3"
     uuid: "npm:^14.0.1"
@@ -2595,6 +2595,19 @@ __metadata:
     lodash: "npm:^4.17.21"
     prettier: "npm:^3.8.3"
   checksum: 10c0/7b9e90246fc17a0856867b30a7acf083144005e9ba684e92492b92efdf36792f2deeb55499d4bd7564932f2853fe4eb27bad6539ff93ea536e33119e78c032a3
+  languageName: node
+  linkType: hard
+
+"twenty-client-sdk@npm:2.38.0":
+  version: 2.38.0
+  resolution: "twenty-client-sdk@npm:2.38.0"
+  dependencies:
+    "@genql/runtime": "npm:^2.10.0"
+    esbuild: "npm:^0.28.1"
+    graphql: "npm:^16.8.1"
+    lodash: "npm:^4.17.21"
+    prettier: "npm:^3.8.3"
+  checksum: 10c0/2ab1c0371a5b48187211477740d833c8454e624d45b4ea1b964864077745d85e6921f5e8452eacb1eceab44e698507a4854686e225e467dd4f5fc481553b047b
   languageName: node
   linkType: hard
 
