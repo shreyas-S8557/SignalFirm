@@ -34,6 +34,6 @@
   },
   "dependencies": {
     "@sniptt/guards": "^0.2.0",
-    "uuid": "^14.0.1"
+    "uuid": "^14.0.3"
   }
 }
