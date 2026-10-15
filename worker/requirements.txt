@@ -14,6 +14,6 @@ prometheus-client>=0.20  # observability.py's /metrics endpoint
 # dev/test only
 pytest>=8.0
 pytest-mock>=3.14
-pytest-cov>=5.0
+pytest-cov>=7.1.0
 ruff>=0.6  # CI lint step, see .github/workflows/ci.yml
 locust>=2.29  # loadtest/locustfile.py
