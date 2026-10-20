@@ -23,7 +23,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "twenty-client-sdk": "2.27.0",
-    "twenty-sdk": "2.27.0",
+    "twenty-sdk": "2.48.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.0"
   },
